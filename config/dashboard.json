@@ -1,0 +1,6 @@
+{
+  "refresh_ms": 2000,
+  "port": 8000,
+  "theme": "roma-eterna",
+  "effects": {"dust": true, "halo": true, "columns": true}
+}

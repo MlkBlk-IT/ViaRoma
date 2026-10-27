@@ -1,0 +1,17 @@
+accounts:
+- account_id: claude-perso
+  account_type: personal
+  cooldown_seconds: 300
+  credentials_ref: file:data/creds/claude-perso.json
+  login_url: https://claude.ai/login
+  max_requests_per_hour: 100
+  priority: 10
+  provider: claude_web
+  success_selector: textarea, [contenteditable=true]
+- account_id: gemini-perso
+  account_type: personal
+  credentials_ref: file:data/creds/gemini-perso.json
+  login_url: https://gemini.google.com/app
+  priority: 5
+  provider: gemini_web
+  success_selector: rich-textarea, [contenteditable=true]

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>ViaRoma — bannière</title>
+<style>
+  :root {
+    --gold: #c69b4a;
+    --gold-deep: #a87c2c;
+    --purple: #6b2737;
+    --purple-deep: #4a1b27;
+    --paper: #f5efe2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 640px; overflow: hidden; background: #100a08; }
+  body { font-family: "Segoe UI", Inter, system-ui, sans-serif; }
+
+  .stage { position: relative; width: 1600px; height: 640px; overflow: hidden; }
+
+  /* ── Rendu 3D reel (modele GLB) ─────────────────────────────────── */
+  #colosseum {
+    position: absolute; inset: 0; width: 1600px; height: 640px; display: block;
+  }
+
+  /* ── Voile pour la lisibilite du texte ─────────────────────────── */
+  .scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(16,10,8,.95) 0%, rgba(16,10,8,.90) 26%, rgba(16,10,8,.55) 44%, rgba(16,10,8,0) 62%),
+      linear-gradient(0deg, rgba(16,10,8,.72) 0%, rgba(16,10,8,0) 38%),
+      radial-gradient(120% 100% at 50% 40%, rgba(0,0,0,0) 45%, rgba(16,10,8,.55) 100%);
+  }
+
+  /* ── Texte ──────────────────────────────────────────────────────── */
+  .copy {
+    position: absolute; left: 78px; top: 0; height: 640px;
+    display: flex; flex-direction: column; justify-content: center;
+    color: var(--paper);
+  }
+  .kicker {
+    font-size: 13px; letter-spacing: .46em; text-transform: uppercase;
+    color: var(--gold); font-weight: 600; margin-bottom: 20px;
+  }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 104px; line-height: .92; font-weight: 700;
+    letter-spacing: .17em; text-indent: .17em;
+    color: #f7f1e4;
+    text-shadow: 0 10px 44px rgba(0,0,0,.65);
+  }
+  .rule {
+    width: 128px; height: 3px; margin: 26px 0 22px;
+    background: linear-gradient(90deg, var(--gold), rgba(198,155,74,0));
+  }
+  .tagline {
+    font-size: 24px; font-weight: 300; letter-spacing: .015em;
+    color: #e9dfcd; max-width: 480px; line-height: 1.46;
+  }
+  .tagline b { color: var(--gold); font-weight: 600; }
+  .chips { display: flex; gap: 10px; margin-top: 30px; flex-wrap: wrap; }
+  .chip {
+    font-size: 13.5px; letter-spacing: .05em; padding: 7px 14px;
+    border: 1px solid rgba(198,155,74,.42); border-radius: 999px;
+    color: #e4d9c4; background: rgba(74,27,39,.34);
+  }
+  .warn {
+    margin-top: 26px; display: inline-flex; align-items: center; gap: 11px;
+    font-size: 14.5px; letter-spacing: .13em; text-transform: uppercase; font-weight: 700;
+    color: #ffd9d2; background: rgba(192,57,43,.22);
+    border: 1px solid rgba(255,120,100,.55); border-radius: 8px; padding: 9px 16px;
+  }
+  .warn span.dot { width: 9px; height: 9px; border-radius: 50%; background: #ff6b57; box-shadow: 0 0 12px #ff6b57; }
+
+  .credit {
+    position: absolute; right: 34px; bottom: 26px;
+    font-size: 11.5px; letter-spacing: .07em; color: rgba(240,232,216,.5);
+  }
+  .seal {
+    position: absolute; right: 44px; top: 44px; width: 96px; height: 96px;
+    border: 1.5px solid rgba(198,155,74,.5); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold); font-size: 11px; letter-spacing: .2em; text-align: center;
+    line-height: 1.5; text-transform: uppercase;
+  }
+  .seal::after {
+    content: ""; position: absolute; inset: 7px; border: 1px solid rgba(198,155,74,.28); border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="colosseum"></canvas>
+  <div class="scrim"></div>
+
+  <div class="copy">
+    <div class="kicker">Free Frontier Router</div>
+    <h1>VIAROMA</h1>
+    <div class="rule"></div>
+    <div class="tagline">
+      Un <b>MCP</b> + une API <b>OpenAI-compatible</b> qui routent vers les modèles
+      frontier gratuits : egress IP jetable, sessions persistantes, cascade automatique.
+    </div>
+    <div class="chips">
+      <div class="chip">MCP · 5 outils</div>
+      <div class="chip">fail-closed strict</div>
+      <div class="chip">catalogue honnête</div>
+      <div class="chip">dashboard Roma Aeterna</div>
+    </div>
+    <div class="warn"><span class="dot"></span> Alpha — ce n'est pas prêt, ne pas utiliser</div>
+  </div>
+
+  <div class="seal">Roma<br>Aeterna</div>
+  <div class="credit">Modèle 3D : Colosseum.how (Anfiteatro Flavio) — attribution requise</div>
+</div>
+
+<script src="/dashboard/static/colosseum3d.js?v=12"></script>
+<script>
+  // Camera figee, cadrage 3/4 contre-plongee: le rendu est reproductible.
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var c = document.getElementById('colosseum');
+      if (!c || c.__colosseum) return;
+      var inst = window.ViaRomaColosseum.mount(c, {
+        autoOrbit: false, radius: 305, height: 66, azimuth: -0.85
+      });
+    }, 60);
+  });
+</script>
+</body>
+</html>

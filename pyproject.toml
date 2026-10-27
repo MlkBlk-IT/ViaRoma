@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "via-roma"
+version = "0.1.0"
+description = "ViaRoma - Free Frontier Router. Un MCP qui donne acces a des modeles frontier gratuits: egress IP jetable, sessions persistantes, cascade automatique."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary - All Rights Reserved" }
+keywords = ["mcp", "llm", "openai-compatible", "free-tier", "cascade", "circuit-breaker", "egress", "proxy-pool", "tls-fingerprint"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+  "Topic :: Internet :: Proxy Servers",
+]
+
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn>=0.29.0",
+  "pydantic>=2.7.0",
+  "curl_cffi>=0.7.0",
+  "aiohttp>=3.9.3",
+  "camoufox>=0.4.0",
+  "mcp>=2.0.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Aucun extra optionnel: redis n'etait pas utilise par le noyau (liste mort).
+
+[project.urls]
+Homepage = "https://github.com/MlkBlk-IT/ViaRoma"
+Repository = "https://github.com/MlkBlk-IT/ViaRoma"
+Issues = "https://github.com/MlkBlk-IT/ViaRoma/issues"
+
+[project.scripts]
+via-roma-mcp = "src.mcp_server:main"
+via-roma = "src.main:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+# static/vendor/** est OBLIGATOIRE: three.js (renderer 3D de la Colisée) est
+# vendu dans le depot. Sans lui, le dashboard du paquet installe s'ouvre mais
+# la Colisée 3D reste muette.
+"src.dashboard" = [
+    "static/*.html",
+    "static/*.css",
+    "static/*.js",
+    "static/*.svg",
+    "static/vendor/**/*",
+]

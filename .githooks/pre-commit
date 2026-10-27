@@ -1,0 +1,27 @@
+#!/bin/sh
+# Hook pre-commit: aucun commit ne peut contenir de secret.
+#
+# Installer une fois par clone:
+#   git config core.hooksPath .githooks
+#
+# Regle: les credentials ne vont JAMAIS dans un fichier versionne
+# (config/accounts.yaml). Ils vont dans data/creds/ (gitignore) et le YAML
+# ne porte que la credentials_ref.
+set -e
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: node absent, scan de secrets ignore (le scan CI tournera)"
+  exit 0
+fi
+
+if ! node scripts/scan_secrets.mjs; then
+  echo ""
+  echo "COMMIT REFUSE: un secret a ete detecte dans les fichiers du commit."
+  echo "  - les credentials vont dans data/creds/ (gitignore)"
+  echo "  - config/accounts.yaml ne porte que credentials_ref: env:VAR | file:chemin"
+  echo "  - corrige la source, ne desactive pas le garde-fou"
+  echo ""
+  exit 1
+fi
+
+exit 0

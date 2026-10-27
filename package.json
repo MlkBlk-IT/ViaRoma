@@ -1,0 +1,60 @@
+{
+  "name": "via-roma",
+  "version": "0.1.0",
+  "description": "ViaRoma - Free Frontier Router. Serveur MCP + API HTTP OpenAI-compatible : egress IP jetable, sessions persistantes, cascade automatique.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "MlkBlk-IT",
+  "homepage": "https://github.com/MlkBlk-IT/ViaRoma",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MlkBlk-IT/ViaRoma.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MlkBlk-IT/ViaRoma/issues"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "llm",
+    "openai-compatible",
+    "free-tier",
+    "cascade",
+    "circuit-breaker",
+    "egress",
+    "proxy-pool"
+  ],
+  "type": "module",
+  "bin": {
+    "via-roma-mcp": "bin/via-roma-mcp.mjs",
+    "via-roma": "bin/via-roma.mjs"
+  },
+  "files": [
+    "bin/",
+    "config/",
+    "src/**/*.py",
+    "src/**/*.yaml",
+    "src/**/*.json",
+    "src/dashboard/static/**",
+    "requirements.txt",
+    "LICENSE",
+    "README.md",
+    "CREDITS.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.mjs",
+    "prepack": "node scripts/prepack.mjs",
+    "check": "node scripts/prepack.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ]
+}

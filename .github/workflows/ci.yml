@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt setuptools wheel
+
+      - name: Compile every module
+        run: python -m compileall -q src tests
+
+      # Un dashboard blanc (une seule parenthese fermante manquante) a coupe
+      # toute l'interface sans aucune erreur visible. On verifie la syntaxe
+      # de TOUS les scripts JS a chaque commit.
+      - name: Syntaxe JS (dashboard + lanceurs npm)
+        run: |
+          set -e
+          mkdir -p /tmp/vrcheck
+          for f in src/dashboard/static/*.js; do
+            # node --check parse en CommonJS: un module ESM passe par une
+            # copie .mjs (les .js du dashboard sont des modules ESM).
+            if ! node --check "$f" 2>/dev/null; then
+              cp "$f" /tmp/vrcheck/check.mjs
+              node --check /tmp/vrcheck/check.mjs || { echo "SYNTAXE KO: $f"; exit 1; }
+            fi
+          done
+          for f in bin/*.mjs scripts/*.mjs; do
+            node --check "$f" || { echo "SYNTAXE KO: $f"; exit 1; }
+          done
+          echo "syntaxe JS OK"
+
+      - name: Auto-test du scanner de secrets
+        run: node scripts/selftest_scan_secrets.mjs
+
+      - name: Scan de secrets (depot entier)
+        run: node scripts/scan_secrets.mjs
+
+      - name: Garde-fou de publication (ce qui part dans le paquet)
+        run: node scripts/prepack.mjs
+
+      - name: Construction du paquet npm
+        run: npm pack --dry-run
+
+      - name: Construction du wheel PyPI + controle des assets
+        run: |
+          python -m pip wheel . --no-deps -w dist
+          python scripts/verify_wheel.py
+
+      - name: Burn chain (403/429 -> burn de lane, bons account_id)
+        run: python tests/test_burn_chain.py
+
+      - name: Identity module (stable, distinct, coherent)
+        run: python tests/test_identity.py
+
+      - name: MCP server (5 outils, stdout propre, aucun secret expose)
+        run: python tests/test_mcp_server.py
+
+      - name: Security & routing context (fail-closed IP, TLS, cookies)
+        run: python tests/test_security_context.py
+
+      - name: Preuve anti-fuite IP (5 niveaux, hors-ligne)
+        run: python tests/test_ip_leak.py

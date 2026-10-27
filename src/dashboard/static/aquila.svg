@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 236" width="200" height="236" role="img" aria-label="Aquila — aigle legionnaire de ViaRoma, couronne de laurier et SPQR">
+  <defs>
+    <linearGradient id="feather" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f2e9d6"/>
+      <stop offset="1" stop-color="#d9c8a4"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#cdb98e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ═══ couronne de laurier (anneau ouvert en haut) ═══ -->
+  <g stroke="#C1121F" stroke-width="3.4" fill="none" stroke-linecap="round" opacity="0.95">
+    <path d="M100 22 C46 22 18 60 18 108 C18 156 48 192 100 208"/>
+    <path d="M100 22 C154 22 182 60 182 108 C182 156 152 192 100 208"/>
+  </g>
+  <g fill="#C1121F" opacity="0.92">
+    <!-- feuilles de laurier -->
+    <path d="M62 40 q10 -3 15 5 q-11 4 -15 -5 Z"/>
+    <path d="M40 66 q11 -1 14 8 q-12 2 -14 -8 Z"/>
+    <path d="M29 100 q11 1 13 10 q-12 0 -13 -10 Z"/>
+    <path d="M32 136 q11 3 11 13 q-12 -2 -11 -13 Z"/>
+    <path d="M48 168 q10 6 8 15 q-11 -5 -8 -15 Z"/>
+    <path d="M138 40 q-10 -3 -15 5 q11 4 15 -5 Z"/>
+    <path d="M160 66 q-11 -1 -14 8 q12 2 14 -8 Z"/>
+    <path d="M171 100 q-11 1 -13 10 q12 0 13 -10 Z"/>
+    <path d="M168 136 q-11 3 -11 13 q12 -2 11 -13 Z"/>
+    <path d="M152 168 q-10 6 -8 15 q11 -5 8 -15 Z"/>
+  </g>
+
+  <!-- ═══ aigle legionnaire ═══ -->
+  <g id="aquila-body">
+    <!-- aile droite (l'autre est miroir) -->
+    <path fill="url(#feather)" stroke="#C1121F" stroke-width="2" stroke-linejoin="round"
+      d="M112 66 C134 46 158 32 186 24 L177 43 L188 38 L171 60 L184 57 L162 77 L173 76 L149 94 L159 95 L134 106 L143 107 L118 114 L124 116 L106 113 Z"/>
+    <!-- plumes primaires, en rouge -->
+    <g fill="#C1121F" opacity="0.85">
+      <path d="M186 24 L177 43 L188 38 Z"/>
+      <path d="M171 60 L184 57 L162 77 Z"/>
+      <path d="M149 94 L159 95 L134 106 Z"/>
+    </g>
+  </g>
+  <use href="#aquila-body" transform="translate(200,0) scale(-1,1)"/>
+
+  <!-- corps -->
+  <path fill="url(#feather)" stroke="#C1121F" stroke-width="2.2" stroke-linejoin="round"
+    d="M100 46 C108 46 113 53 113 62 C113 74 110 92 108 112 C107 126 105 140 104 150
+       L96 150 C95 140 93 126 92 112 C90 92 87 74 87 62 C87 53 92 46 100 46 Z"/>
+  <!-- plastron -->
+  <path fill="#C1121F" opacity="0.9" d="M100 58 C104 58 107 62 107 68 L105 96 L95 96 L93 68 C93 62 96 58 100 58 Z"/>
+  <!-- tête -->
+  <circle cx="100" cy="40" r="12" fill="url(#feather)" stroke="#C1121F" stroke-width="2"/>
+  <!-- bec -->
+  <path fill="#C1121F" d="M109 35 L130 41 L109 46 Z"/>
+  <!-- oeil -->
+  <circle cx="103" cy="37" r="2.4" fill="#C1121F"/>
+  <!-- cou et plumes du dos -->
+  <path fill="url(#steel)" stroke="#C1121F" stroke-width="1.6" d="M100 24 C104 28 106 32 106 34 L94 34 C94 32 96 28 100 24 Z"/>
+
+  <!-- pattes -->
+  <g stroke="#C1121F" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M97 150 L95 166"/>
+    <path d="M103 150 L105 166"/>
+  </g>
+  <!-- couronne de laurier tenue dans les serres -->
+  <g fill="none" stroke="#C1121F" stroke-width="2.6" stroke-linecap="round">
+    <path d="M78 176 C86 168 114 168 122 176"/>
+  </g>
+  <g fill="#C1121F">
+    <path d="M84 173 q7 -2 10 4 q-8 3 -10 -4 Z"/>
+    <path d="M116 173 q-7 -2 -10 4 q8 3 10 -4 Z"/>
+  </g>
+
+  <!-- queue en éventail -->
+  <path fill="url(#feather)" stroke="#C1121F" stroke-width="2" stroke-linejoin="round"
+    d="M96 148 L104 148 L118 180 L108 176 L100 184 L92 176 L82 180 Z"/>
+
+  <!-- ═══ bandeau SPQR ═══ -->
+  <g>
+    <path fill="#C1121F" d="M30 196 L170 196 L164 228 L36 228 Z"/>
+    <path fill="#C1121F" d="M30 196 L46 196 L38 212 L20 212 Z"/>
+    <path fill="#C1121F" d="M170 196 L154 196 L162 212 L180 212 Z"/>
+    <text x="100" y="220" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+      font-size="22" font-weight="bold" letter-spacing="7" fill="#ffffff">SPQR</text>
+  </g>
+</svg>

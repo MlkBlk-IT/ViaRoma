@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>ViaRoma — ce que c'est</title>
+<style>
+  :root {
+    --gold:#c69b4a; --gold-hi:#e6c789; --gold-deep:#8d6a2c;
+    --purple:#6b2737; --purple-deep:#3d1620;
+    --paper:#f2e9d8; --paper-dim:#c9bda9; --ink:#140c0f;
+    --ok:#4fc98a; --warn:#ff7a63;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1400px; height:2000px; overflow:hidden;
+    background:
+      radial-gradient(900px 620px at 82% 4%, rgba(198,155,74,.20), transparent 62%),
+      radial-gradient(760px 520px at 8% 96%, rgba(107,39,55,.42), transparent 60%),
+      linear-gradient(168deg, #1d1015 0%, #140c0f 46%, #0e080a 100%);
+    color:var(--paper);
+    font-family:"Segoe UI", Inter, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page { width:1400px; height:2000px; padding:58px 74px; display:flex; flex-direction:column; }
+
+  /* ── En-tete ─────────────────────────────────────────────── */
+  header { display:flex; justify-content:space-between; align-items:flex-start; }
+  .kicker { font-size:15px; letter-spacing:.44em; text-transform:uppercase; color:var(--gold); font-weight:600; }
+  h1 {
+    font-family:Georgia, serif; font-size:74px; letter-spacing:.16em; text-indent:.16em;
+    font-weight:700; margin:12px 0 0; line-height:1;
+  }
+  .rule { width:150px; height:3px; background:linear-gradient(90deg,var(--gold),transparent); margin:22px 0 16px; }
+  .sub { font-size:23px; font-weight:300; color:var(--paper-dim); max-width:760px; line-height:1.5; }
+  .sub b { color:var(--gold-hi); font-weight:600; }
+  .badge {
+    border:1.5px solid rgba(255,122,99,.6); background:rgba(255,122,99,.13); color:#ffd2c9;
+    border-radius:12px; padding:14px 20px; font-size:15px; letter-spacing:.12em; text-transform:uppercase;
+    font-weight:700; text-align:center; line-height:1.6; white-space:nowrap;
+  }
+  .badge small { display:block; font-size:12px; letter-spacing:.06em; text-transform:none; color:#ffb3a4; font-weight:400; margin-top:5px; }
+
+  /* ── Sections ────────────────────────────────────────────── */
+  .band { margin-top:46px; }
+  .band-t {
+    display:flex; align-items:center; gap:14px; font-size:15px; letter-spacing:.3em;
+    text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:20px;
+  }
+  .band-t::after { content:""; flex:1; height:1px; background:linear-gradient(90deg,rgba(198,155,74,.45),transparent); }
+
+  /* ── Flux ────────────────────────────────────────────────── */
+  .flow { display:flex; align-items:stretch; gap:0; }
+  .step {
+    flex:1; background:rgba(255,255,255,.045); border:1px solid rgba(198,155,74,.26);
+    border-radius:14px; padding:20px 18px; position:relative;
+  }
+  .step .n {
+    font-family:Consolas, monospace; font-size:12px; color:var(--gold); letter-spacing:.18em;
+    border:1px solid rgba(198,155,74,.45); border-radius:999px; padding:3px 9px; display:inline-block;
+  }
+  .step h3 { font-size:20px; margin:13px 0 8px; font-weight:650; letter-spacing:.005em; }
+  .step p { font-size:14.5px; color:var(--paper-dim); line-height:1.52; }
+  .step .tag { margin-top:12px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-deep); }
+  .arrow { width:34px; display:flex; align-items:center; justify-content:center; color:var(--gold); font-size:26px; opacity:.75; }
+
+  /* ── Grille de chiffres ──────────────────────────────────── */
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .stat {
+    background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+    border:1px solid rgba(198,155,74,.24); border-radius:14px; padding:20px 20px 18px;
+  }
+  .stat .v { font-family:Consolas, monospace; font-size:42px; color:var(--gold-hi); line-height:1; font-weight:700; }
+  .stat .k { font-size:14px; color:var(--paper-dim); margin-top:11px; line-height:1.45; }
+  .stat .k b { color:var(--paper); font-weight:600; }
+
+  /* ── Origines ────────────────────────────────────────────── */
+  .origins { display:flex; flex-direction:column; gap:11px; }
+  .o { display:flex; align-items:center; gap:16px; }
+  .o .lab { width:190px; font-size:16px; color:var(--paper); }
+  .o .bar { flex:1; height:26px; background:rgba(255,255,255,.05); border-radius:7px; overflow:hidden; }
+  .o .fill { height:100%; border-radius:7px; background:linear-gradient(90deg,var(--purple),var(--gold)); }
+  .o .n { width:110px; text-align:right; font-family:Consolas, monospace; font-size:17px; color:var(--gold-hi); }
+  .note { font-size:15px; color:var(--paper-dim); margin-top:16px; line-height:1.55; }
+  .note b { color:var(--paper); }
+
+  /* ── Colonnes finales ────────────────────────────────────── */
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .card { border-radius:16px; padding:26px 28px; border:1px solid rgba(198,155,74,.26); background:rgba(255,255,255,.04); }
+  .card.safe { border-color:rgba(79,201,138,.42); background:linear-gradient(180deg, rgba(79,201,138,.10), rgba(79,201,138,.03)); }
+  .card.truth { border-color:rgba(255,122,99,.42); background:linear-gradient(180deg, rgba(255,122,99,.10), rgba(255,122,99,.03)); }
+  .card h4 { font-size:13px; letter-spacing:.26em; text-transform:uppercase; margin-bottom:16px; font-weight:700; }
+  .card.safe h4 { color:var(--ok); } .card.truth h4 { color:var(--warn); }
+  .card ul { list-style:none; }
+  .card li { font-size:15.5px; line-height:1.5; color:var(--paper-dim); padding:9px 0 9px 24px; position:relative; }
+  .card li b { color:var(--paper); font-weight:600; }
+  .card li::before { content:"—"; position:absolute; left:0; color:var(--gold); }
+  .card.truth li::before { content:"✕"; color:var(--warn); font-size:13px; top:10px; }
+  .card.safe li::before { content:"✓"; color:var(--ok); font-size:13px; top:10px; }
+
+  footer {
+    margin-top:auto; padding-top:26px; border-top:1px solid rgba(198,155,74,.22);
+    display:flex; justify-content:space-between; align-items:flex-end;
+    font-size:13.5px; color:var(--paper-dim); letter-spacing:.04em;
+  }
+  footer .l { line-height:1.7; }
+  footer .r { text-align:right; font-family:Consolas, monospace; color:var(--gold-deep); line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <div class="kicker">Free Frontier Router</div>
+      <h1>VIAROMA</h1>
+      <div class="rule"></div>
+      <div class="sub">
+        Un <b>MCP</b> et une API <b>OpenAI-compatible</b> qui routent une requête vers un
+        modèle frontier gratuit : cascade avec circuit breaker, egress IP jetable,
+        sessions persistantes. Chaque clic du dashboard est une action réelle.
+      </div>
+    </div>
+    <div class="badge">
+      ⛔ Alpha — ne pas utiliser
+      <small>1 adapter validé sur 15</small>
+    </div>
+  </header>
+
+  <section class="band">
+    <div class="band-t">Le trajet d'une requête</div>
+    <div class="flow">
+      <div class="step">
+        <span class="n">01</span>
+        <h3>Requête</h3>
+        <p>POST <code style="color:var(--gold-hi)">/v1/chat/completions</code> — format OpenAI, SSE en sortie. Un client MCP appelle <code style="color:var(--gold-hi)">chat</code>.</p>
+        <div class="tag">HTTP · MCP stdio</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <span class="n">02</span>
+        <h3>Cascade</h3>
+        <p>Chaque provider a son compteur d'échecs : 5 échecs → circuit ouvert, puis test en demi-ouvert. Backoff exponentiel.</p>
+        <div class="tag">circuit breaker</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <span class="n">03</span>
+        <h3>Fronts web</h3>
+        <p>15 adaptateurs (Claude, Gemini, ChatGPT, Grok, Kimi, DeepSeek…) : URL, payload, en-têtes et parser SSE propres à chaque front.</p>
+        <div class="tag">adaptateurs</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <span class="n">04</span>
+        <h3>Egress IP</h3>
+        <p>Une lane par compte, adossée à un proxy du pool. Le trafic sort par le proxy : l'IP de la machine ne part jamais. 403/429 → burn de lane, cookie intact.</p>
+        <div class="tag">fail-closed</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="step">
+        <span class="n">05</span>
+        <h3>Réponse</h3>
+        <p>Le flux SSE du front est reparsé et réémis en OpenAI. Erreur = message propre, jamais de traceback.</p>
+        <div class="tag">SSE</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band-t">L'état réel, mesuré</div>
+    <div class="grid">
+      <div class="stat"><div class="v">2 094</div><div class="k"><b>modèles</b> au catalogue, découverts en scannant les sources publiques</div></div>
+      <div class="stat"><div class="v">304</div><div class="k"><b>modèles frontier</b> (tier le plus haut)</div></div>
+      <div class="stat"><div class="v">21</div><div class="k"><b>dépôts GGUF</b> avec vrais fichiers de quantification et URL</div></div>
+      <div class="stat"><div class="v">16</div><div class="k"><b>onglets</b> de dashboard, chaque action = une vraie requête</div></div>
+      <div class="stat"><div class="v">5</div><div class="k"><b>outils MCP</b> : chat, connect_provider, list_providers, list_free_models, session_status</div></div>
+      <div class="stat"><div class="v">3</div><div class="k"><b>lanes egress</b> actives, pool de 102 proxies sondés</div></div>
+      <div class="stat"><div class="v">142</div><div class="k"><b>vérifications</b> automatisées, 5 suites, CI verte à chaque commit</div></div>
+      <div class="stat"><div class="v">0</div><div class="k"><b>secret</b> dans le dépôt : scanner de secrets + hook pre-commit</div></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band-t">Le catalogue, sans valeur inventée</div>
+    <div class="origins">
+      <div class="o"><div class="lab">Amérique du Nord</div><div class="bar"><div class="fill" style="width:100%"></div></div><div class="n">1 116</div></div>
+      <div class="o"><div class="lab">Chine</div><div class="bar"><div class="fill" style="width:35.7%"></div></div><div class="n">399</div></div>
+      <div class="o"><div class="lab">Autres régions</div><div class="bar"><div class="fill" style="width:45.7%"></div></div><div class="n">511</div></div>
+      <div class="o"><div class="lab">Europe</div><div class="bar"><div class="fill" style="width:5.9%"></div></div><div class="n">66</div></div>
+      <div class="o"><div class="lab">Canada</div><div class="bar"><div class="fill" style="width:0.8%"></div></div><div class="n">9</div></div>
+      <div class="o"><div class="lab">Israël</div><div class="bar"><div class="fill" style="width:0.2%"></div></div><div class="n">2</div></div>
+    </div>
+    <div class="note">
+      Fenêtre de contexte : <b>la valeur réelle, ou « non publiée par la source »</b> — jamais une valeur par défaut.
+      Un ancien <code>32768</code> en dur sur 2 000 modèles a été supprimé ; chaque valeur porte sa provenance
+      (<code>ctx_source</code> : métadonnées GGUF, OpenRouter, etc.).
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="cols">
+      <div class="card safe">
+        <h4>Ce qui est vérifié, en exécution</h4>
+        <ul>
+          <li><b>L'IP de la machine ne sort jamais</b> — 5 niveaux de preuve automatisés : structure fail-closed, transport curl_cffi, transport aiohttp, cible ≠ proxy, IP absente du dépôt, des lanes et des logs.</li>
+          <li><b>Les credentials ne fuient pas</b> — jamais dans un fichier versionné : ils vont dans <code>data/creds/</code> (gitignoré), le YAML ne porte qu'une référence <code>env:</code> ou <code>file:</code>.</li>
+          <li><b>La cascade brûle la lane</b> sur 403/429 et garde le compte intact.</li>
+          <li><b>Chaque clic du dashboard</b> déclenche une action réelle — un clic muet est un bug, pas un design.</li>
+        </ul>
+      </div>
+      <div class="card truth">
+        <h4>Ce qui n'est pas démontré</h4>
+        <ul>
+          <li><b>Une complétion réelle</b> : 1 adapter sur 15 validé contre son front. Les 14 autres ont une URL, un payload et un parser SSE corrects, mais n'ont jamais répondu.</li>
+          <li><b>Le contournement anti-WAF n'a jamais tourné</b> contre un vrai site.</li>
+          <li><b>Aucun credential n'est fourni</b> : sans <code>data/creds/&lt;compte&gt;.json</code>, le chat renvoie un 503 propre — c'est voulu.</li>
+          <li><b>Fronts web uniquement</b> : pas de support desktop/CLI, et la CI ne teste que le code hors-ligne.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="l">
+      github.com/MlkBlk-IT/ViaRoma · licence propriétaire (tous droits réservés)<br>
+      Modèle 3D : Colosseum.how (Anfiteatro Flavio) — attribution requise · three.js vendé localement
+    </div>
+    <div class="r">
+      5 suites · 142 vérifications · CI verte<br>
+      état au 27-10-2026
+    </div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Pool egress IP jetables
+lanes_path: data/egress_lanes.json
+probe_interval: 120
+probe_timeout: 8
+quarantine_seconds: 600
+enable_tor: true
+static_proxies: []

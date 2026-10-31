@@ -49,7 +49,7 @@ document.addEventListener('click', async (ev) => {
   if (!el) return;
   ev.preventDefault();
   const action = el.dataset.action;
-  if (action) doAction(action, el);
+  if (action) void doAction(action, el).catch(e => log('action ' + action + ': ' + e.message, 'err'));
 });
 
 // ═══ LOG ═══
@@ -288,9 +288,18 @@ async function loadMetrics() {
     setHTML('#m-tiers', Object.keys(tiers).length ? Object.entries(tiers).map(([t,n]) => `
       <div class="row clickable" data-action="go-frontier"><span class="name">${esc(t)}</span>
       <span class="meta">${n} models</span></div>`).join('') : '<p class="empty">Third-party data unavailable.</p>');
-    if (window.ViaRomaCharts) {
-      window.ViaRomaCharts.models($('#m-models'), h);
-      window.ViaRomaCharts.breakers($('#m-breakers'), c);
+    if (typeof Charts !== 'undefined') {
+      Charts.donut('m-models', [
+        {val: (tiers.frontier || 0), color:'#c69b4a', colorDark:'#a87c2c'},
+        {val: (tiers.large || 0), color:'#dfd2b8', colorDark:'#c9b890'},
+        {val: (tiers.medium || 0) + (tiers.small || 0), color:'#e8dcc8', colorDark:'#d4c4a8'},
+      ], {label: 'models'});
+      const breakerStats = c.providers || c.stats || {};
+      Charts.bar3d('m-breakers', Object.entries(breakerStats).map(([name, metric]) => ({
+        label: String(name).slice(0, 12),
+        val: Math.max(metric.total_requests || 0, metric.consecutive_failures || 0, 1),
+        color: metric.state === 'closed' ? '#e8dcc8' : '#6b2737',
+      })));
     }
   } catch(e) { log('metrics: '+e.message,'err'); }
 }

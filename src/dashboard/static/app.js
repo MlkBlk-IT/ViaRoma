@@ -725,16 +725,18 @@ async function loadProviders() {
       const addAccountButton = `<button class="btn btn-small" data-action="provider-add-account" data-name="${esc(p.name)}">Add account</button>`;
       const directButton = `<button class="btn btn-small" data-action="provider-connect-direct" data-name="${esc(p.name)}">Direct (WIP)</button>`;
       const apiButton = p.type === 'api' ? `<button class="btn btn-small" data-action="provider-api-add" data-name="${esc(p.name)}" data-provider="${esc(p.key)}">API setup (WIP)</button>` : '';
+      const modeButtons = p.type === 'web' ? `${addAccountButton}${directButton}` : p.type === 'api' ? apiButton : '<span class="badge">Local endpoint</span>';
       return `<div class="card glass provider-card clickable" data-action="provider-info" data-name="${esc(p.name)}" data-type="${esc(p.type)}" data-url="${esc(p.url||'')}">
       <div class="card-head"><span>${esc(p.name)}</span> ${connected?'<span class="badge ok">✓ connected</span>':p.free_tier?'<span class="badge ok">free</span>':'<span class="badge">paid</span>'}</div>
       <div class="card-meta">${esc(p.type.toUpperCase())}</div>
-      ${accountRows}${addAccountButton}${directButton}${apiButton}
+      ${accountRows}${modeButtons}
       <div class="btn-row">${btn(connected?'🔄 Reconnect':'🔌 Connect','provider-connect',{data:{name:p.name},primary:!connected})}</div>
     </div>`;
     };
     $('#prov-web').innerHTML = full.web_chats.map(cardHTML).join('');
     $('#prov-api').innerHTML = full.api_providers.map(cardHTML).join('');
     $('#prov-desktop').innerHTML = full.desktop.map(cardHTML).join('');
+    document.querySelectorAll('#prov-api [data-action="provider-connect"], #prov-desktop [data-action="provider-connect"]').forEach(el => el.remove());
     $('#prov-active').innerHTML = (active.providers||[]).map(p=>`<div class="row clickable" data-action="provider-detail" data-name="${esc(p.name||p.label||'')}"><div><span class="name">${esc(p.name||p.label||'?')}</span> ${p.egress?'<span class="badge ok">egress</span>':'<span class="badge off">no egress</span>'}</div><span class="meta">${p.cookie_count||0} cookies · ${esc(p.tls_profile||'')}</span></div>`).join('') || '<p class="empty">No active adapters yet. Click Connect above.</p>';
   } catch(e) { log('providers: '+e.message,'err'); }
 }

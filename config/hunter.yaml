@@ -1,4 +1,4 @@
-# Free-Hunter: decouverte de modeles frontier gratuits
+# Free-Hunter: discovery of free frontier models
 catalog_path: data/free_models_catalog.json
 scan_interval: 300
 min_tier: frontier

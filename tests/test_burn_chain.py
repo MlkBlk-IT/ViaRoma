@@ -1,11 +1,11 @@
-"""Test isole de la chaine "failure is a routing signal".
+"""Test isolated from the "failure is a routing signal" chain.
 
-Objectif: prouver qu'un 403/429 reellement remonte par les adaptateurs
-(proxy_engine leve les exceptions NATIVES PermissionError / ResourceWarning)
-declenche un burn de lane avec le BON account_id, et que la lane est
-remplacee sans toucher aux cookies de session.
+Objective: prove that a 403/429 really goes up through the adapters
+(proxy_engine throws NATIVE PermissionError / ResourceWarning exceptions)
+triggers a lane burn with the RIGHT account_id, and the lane is
+replaced without touching session cookies.
 
-Aucun acces reseau. Aucun fichier de production modifie.
+No network access. No production files edit.
 
 Run:  .venv/Scripts/python.exe tests/test_burn_chain.py
 """
@@ -22,7 +22,7 @@ LABEL = "Claude (web)"
 
 
 class FakeProvider:
-    """Simule un adaptateur: leve les exceptions NATIVES, comme proxy_engine."""
+    """Simulates an adapter: throws NATIVE exceptions, like proxy_engine."""
 
     def __init__(self, name, session_id, exc):
         self.name = name
@@ -37,7 +37,7 @@ class FakeProvider:
 
 
 class FakeLanePool:
-    """Simule EgressLanePool: compte les burns et remplace la lane."""
+    """Simulates EgressLanePool: counts burns and replaces the lane."""
 
     def __init__(self, account_id):
         self.burns = []
@@ -87,7 +87,7 @@ check.failures = 0
 
 
 async def main():
-    print("== 403 remonte en PermissionError native (cas reel des adaptateurs) ==")
+    print("== 403 goes back to native PermissionError (real case of adapters) ==")
     burns, pool = await _run(PermissionError("Claude (web) auth expired (403)"))
     check("burn appele", len(burns) == 1, "burns={}".format(burns))
     check("account_id correct", bool(burns) and burns[0][0] == "acct-1",
@@ -105,7 +105,7 @@ async def main():
           "raison={}".format(burns[0][1] if burns else None))
     check("lane remplacee", pool.lanes["acct-1"]["proxy"] == "socks5://fresh")
 
-    print("== mapping reel depuis accounts.yaml + cascade.yaml (load_yaml=True) ==")
+    print("== real mapping from accounts.yaml + cascade.yaml (load_yaml=True) ==")
     cm = CascadeManager(on_burn=None, load_yaml=True)
     accounts = cm.breaker.config.provider_accounts
     check("provider_accounts non vide", len(accounts) > 0, "mapping={}".format(accounts))
@@ -114,7 +114,7 @@ async def main():
     check("gemini_web -> gemini-perso", accounts.get("Gemini (web)") == "gemini-perso",
           "obtenu={}".format(accounts.get("Gemini (web)")))
 
-    print("== config explicite de l'appelant reste prioritaire ==")
+    print("== explicit config of the caller remains priority ==")
     cfg = FallbackConfig(providers=[LABEL], provider_accounts={LABEL: "override-1"})
     cm2 = CascadeManager(config=cfg, on_burn=None, load_yaml=False)
     check("mapping appelant conserve",
@@ -123,9 +123,9 @@ async def main():
 
     print("")
     if check.failures:
-        print("ECHEC: {} verification(s)".format(check.failures))
+        print("FAILED: {} check(s)".format(check.failures))
         return 1
-    print("OK: chaine burn cablee de bout en bout")
+    print("OK: burn chain cabled end to end")
     return 0
 
 

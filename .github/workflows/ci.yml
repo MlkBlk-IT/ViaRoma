@@ -36,16 +36,16 @@ jobs:
       - name: Compile every module
         run: python -m compileall -q src tests
 
-      # Un dashboard blanc (une seule parenthese fermante manquante) a coupe
-      # toute l'interface sans aucune erreur visible. On verifie la syntaxe
-      # de TOUS les scripts JS a chaque commit.
+      # A white dashboard (only one closing parenthesis missing) has been cut
+      # the entire interface without any visible errors. We check the syntax
+      # of ALL JS scripts with each commit.
       - name: Syntaxe JS (dashboard + lanceurs npm)
         run: |
           set -e
           mkdir -p /tmp/vrcheck
           for f in src/dashboard/static/*.js; do
-            # node --check parse en CommonJS: un module ESM passe par une
-            # copie .mjs (les .js du dashboard sont des modules ESM).
+            # node --check parse in CommonJS: an ESM module goes through a
+            # copy .mjs (the .js in the dashboard are ESM modules).
             if ! node --check "$f" 2>/dev/null; then
               cp "$f" /tmp/vrcheck/check.mjs
               node --check /tmp/vrcheck/check.mjs || { echo "SYNTAXE KO: $f"; exit 1; }
@@ -56,34 +56,34 @@ jobs:
           done
           echo "syntaxe JS OK"
 
-      - name: Auto-test du scanner de secrets
+      - name: Secrets Scanner Self-Test
         run: node scripts/selftest_scan_secrets.mjs
 
-      - name: Scan de secrets (depot entier)
+      - name: Secrets scan (entire repository)
         run: node scripts/scan_secrets.mjs
 
-      - name: Garde-fou de publication (ce qui part dans le paquet)
+      - name: Publication safeguards (what goes in the package)
         run: node scripts/prepack.mjs
 
-      - name: Construction du paquet npm
+      - name: Building the npm package
         run: npm pack --dry-run
 
-      - name: Construction du wheel PyPI + controle des assets
+      - name: Construction of the PyPI wheel + asset control
         run: |
           python -m pip wheel . --no-deps -w dist
           python scripts/verify_wheel.py
 
-      - name: Burn chain (403/429 -> burn de lane, bons account_id)
+      - name: Burn chain (403/429 -> lane burn, good account_id)
         run: python tests/test_burn_chain.py
 
-      - name: Identity module (stable, distinct, coherent)
+      - name: Identity module (stable, distinct, consistent)
         run: python tests/test_identity.py
 
-      - name: MCP server (5 outils, stdout propre, aucun secret expose)
+      - name: MCP server (5 tools, clean stdout, no secret exposed)
         run: python tests/test_mcp_server.py
 
       - name: Security & routing context (fail-closed IP, TLS, cookies)
         run: python tests/test_security_context.py
 
-      - name: Preuve anti-fuite IP (5 niveaux, hors-ligne)
+      - name: Anti-IP leak proof (5 levels, offline)
         run: python tests/test_ip_leak.py

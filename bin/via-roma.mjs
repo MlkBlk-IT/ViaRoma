@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// via-roma: lance l'API HTTP OpenAI-compatible + le dashboard Roma Aeterna.
+// via-roma: launches the OpenAI-compatible HTTP API + the Roma Aeterna dashboard.
 //
-// Ecoute par defaut sur 127.0.0.1 uniquement (VIAROMA_HOST / VIAROMA_PORT
-// pour overrider). Le dashboard expose l'etat de routage du compte: il ne
-// doit pas partir sur le reseau local par defaut.
+// Listening by default on 127.0.0.1 only (VIAROMA_HOST / VIAROMA_PORT
+// to override). The dashboard shows the routing state of the account: it does not
+// must not go to the local network by default.
 import { spawn } from "node:child_process";
 import { prepare, childEnv, homeDir, eprint } from "./_python.mjs";
 
@@ -18,7 +18,7 @@ const child = spawn(py.cmd, [...py.args, "-m", "src.main", ...args], {
 });
 
 child.on("error", (err) => {
-  eprint("[via-roma] Impossible de lancer le serveur HTTP: " + err.message);
+  eprint("[via-roma] Failed to launch HTTP server: " + err.message);
   process.exit(1);
 });
 

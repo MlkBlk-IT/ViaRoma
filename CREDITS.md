@@ -1,53 +1,53 @@
-# Crédits & attributions
+# Credits & attributions
 
-Ce projet intègre des éléments tiers. Chaque attribution ci-dessous est
-obligatoire.
+This project integrates third-party elements. Each attribution below is
+OBLIGATORY.
 
-## Modèle 3D du Colisée
+## 3D Model of the Colosseum
 
-- **Modèle** : reconstruction 3D du Colisée (Anfiteatro Flavio) — édition
+- **Model**: 3D reconstruction of the Colosseum (Anfiteatro Flavio) — edition
   « 80 d.C. » et « aujourd'hui ».
 - **Auteur / source** : [Colosseum.how](https://www.colosseum.how/it/modello-3d)
   — Artur Jakucewicz.
-- **Licence** : usage libre, y compris commercial, **à condition de citer
-  Colosseum.how avec un lien actif**.
-- **Fichiers** : `data/models/colosseum-ad-80.glb` (24 Mo) et
-  `data/models/colosseum-today.glb` (8 Mo) — **absents du dépôt** (trop
-  volumineux) et téléchargés par `scripts/fetch_3d_assets.py`.
-- **Attribution à afficher** :
+- **License**: free use, including commercial use, **on condition of quoting
+  Colosseum.how with an active link**.
+- **Files**: `data/models/colosseum-ad-80.glb` (24 Mo) et
+  `data/models/colosseum-today.glb` (8 MB) — **missing from the repository** (too many
+  large) and downloaded by `scripts/fetch_3d_assets.py`.
+- **Attribution to display**:
 
   ```html
-  <a href="https://www.colosseum.how/it/modello-3d">Modèle 3D : Colosseum.how</a>
+  <a href="https://www.colosseum.how/it/modello-3d">3D Model: Colosseum.how</a>
   ```
 
-Si le modèle n'est pas présent, le dashboard bascule sur un Colisée
-procédural généré à la volée (aucune dépendance externe).
+If the model is not present, the dashboard switches to a Coliseum
+procedurally generated on the fly (no external dependencies).
 
 ## three.js
 
-- **Bibliothèque** : three.js r160 — <https://threejs.org>
-- **Licence** : MIT — voir `src/dashboard/static/vendor/three/`.
-- three.js est **vendu dans le dépôt** (dossier `vendor/three/`) pour que le
-  dashboard fonctionne sans accès réseau et sans CDN au moment de l'exécution.
+- **Library** : three.js r160 — <https://threejs.org>
+- **License**: MIT — see `src/dashboard/static/vendor/three/`.
+- three.js is **sold in the deposit** (file `vendor/three/`) so that the
+  dashboard works without network access and without CDN at runtime.
 
 ## Colosseum.how — contexte
 
-La géométrie du Colisée suit les dimensions réelles historiques
-(188 × 156 m, 48 m de haut). Les positions des monuments voisins viennent
-d'OpenStreetMap (contributeurs), via la source du modèle.
+The geometry of the Colosseum follows the actual historical dimensions
+(188 × 156 m, 48 m high). The positions of neighboring monuments come
+from OpenStreetMap (contributors), via the model source.
 
-## Sources de données du catalogue
+## Catalog data sources
 
-Le catalogue du Free Hunter est constitué par scraping direct, au runtime,
+The Free Hunter catalog is created by direct scraping, at runtime,
 d'API publiques :
 
-- OpenRouter (`/api/v1/models`) — fenêtres de contexte réelles.
+- OpenRouter (`/api/v1/models`) — real context windows.
 - Hugging Face (`/api/models`, `/api/models?filter=gguf`, `/api/daily_papers`)
-  — y compris les métadonnées GGUF (fenêtre de contexte et fichiers de
-  quantification réels).
+  — including GGUF metadata (context window and context files)
+  real quantification).
 - Registre Ollama (`ollama.com/api/tags`).
-- NVIDIA NIM, llm7, et les API compatibles OpenAI listées dans
+- NVIDIA NIM, llm7, and OpenAI compatible APIs listed in
   `src/hunter/hunter.py` (SOURCES).
 
-Les flux d'actualités de l'onglet **Live** proviennent des flux RSS/JSON
-publics de Hugging Face, r/LocalLLaMA, Hacker News, OpenAI et Google AI.
+News feeds in the **Live** tab come from RSS/JSON feeds
+audiences from Hugging Face, r/LocalLLaMA, Hacker News, OpenAI and Google AI.

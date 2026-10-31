@@ -1,17 +1,18 @@
 
 """
 Module: src/proxy/egress_lanes.py
-Role: Pool d'egress IP jetables + lanes persistantes liees 1:1 a un account_id.
-Principe: l'IP de sortie est une ressource jetable, pas un reglage statique.
-  - Un pool de proxies (SOCKS5/HTTP, Tor 127.0.0.1:9050, listes publiques, pool local) est maintenu.
-  - Chaque account_id recoit une `lane` persistante (proxy + profil TLS associe).
-  - Une boucle de sante sonde chaque lane: IP publique, latence, pays/ASN -> quarantaine si morte.
-  - burn_lane(): sur 403/429, la lane est remplacee depuis le pool; le cookie de session reste intact.
+Role: Pool of disposable egress IPs + persistent lanes linked 1:1 to an account_id.
+Principle: the exit IP is a disposable resource, not a static setting.
+  - A pool of proxies (SOCKS5/HTTP, Tor 127.0.0.1:9050, public lists, local pool) is maintained.
+  - Each account_id receives a `lane` persistante (proxy + profil TLS associe).
+  - A health loop probes each lane: public IP, latency, country/ASN -> quarantine if dead.
+  - burn_lane(): on 403/429, the lane is replaced from the pool; the session cookie remains intact.
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import sys
 import time
@@ -24,7 +25,7 @@ import aiohttp
 
 
 def _log(*args, **kwargs):
-    """Logs sur stderr: stdout est reserve au protocole MCP (transport stdio)."""
+    """Logs on stderr: stdout is reserved for the MCP protocol (stdio transport)."""
     kwargs.setdefault("file", sys.stderr)
     import builtins
     builtins.print(*args, **kwargs)
@@ -85,6 +86,24 @@ class ProxyEndpoint:
             return False
         return True
 
+    def is_browser_ready(self, provider=None):
+        """Safe for browser login, not merely reachable by an IP probe."""
+        return (
+            self.is_usable
+            and bool(self.public_ip)
+            and bool(self.last_probe)
+            and self.flag_checks.get("cloudflare") == "ok"
+            and (
+                self.flag_checks.get(provider) == "ok"
+                if provider
+                else any(self.flag_checks.get(p) == "ok" for p in (
+                    "claude_web", "gemini_web", "chatgpt_web"
+                ))
+            )
+            and self.latency_ms <= 5000
+            and self.burns == 0
+        )
+
 
 @dataclass
 class Lane:
@@ -119,11 +138,11 @@ class Lane:
         return cls(**data)
 
 
-# --- Definitions de pool statiques (gratuites) ---
+# --- Static pool definitions (free) ---
 
 TOR_ENDPOINT = ProxyEndpoint(url="socks5://127.0.0.1:9050", kind=ProxyKind.TOR, source="tor")
 
-# Listes publiques gratuites (sources brutes, sans cle API) — 20+ sources mondiales.
+# Free public lists (raw sources, without API key) — 20+ global sources.
 PUBLIC_PROXY_SOURCES = {
     # ── HTTP proxies (12 sources) ──
     "proxifly-http": "https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/http/data.txt",
@@ -153,11 +172,11 @@ PUBLIC_PROXY_SOURCES = {
 }
 
 IPIFY_URL = "https://api.ipify.org?format=json"
-IPAPI_URL = "http://ip-api.com/json/"  # gratuit, sans cle, 45 req/min
+IPAPI_URL = "http://ip-api.com/json/"  # free, keyless, 45 req/min
 
 
 def _parse_proxy_line(line, kind):
-    """Parse 'ip:port' ou 'user:pass@ip:port' -> ProxyEndpoint."""
+    """Parse 'ip:port' or 'user:pass@ip:port' -> ProxyEndpoint."""
     line = line.strip()
     if not line or line.startswith("#"):
         return None
@@ -170,7 +189,7 @@ def _parse_proxy_line(line, kind):
 
 
 class _NoopCM:
-    """Context manager asynchrone no-op pour semaphores optionnels."""
+    """Asynchronous no-op context manager for optional semaphores."""
     async def __aenter__(self):
         return self
     async def __aexit__(self, *args):
@@ -178,13 +197,13 @@ class _NoopCM:
 
 
 class EgressLanePool:
-    """Pool d'egress IP jetables + binding lane persistante par compte.
+    """Pool of disposable egress IPs + persistent lane binding per account.
 
-    - refresh_pool(): rafraichit le pool depuis Tor + listes publiques
+    - refresh_pool(): refreshes the pool from Tor + public lists
     - probe_lane(): sonde IP publique, latence, pays/ASN
-    - health_loop(): boucle de fond style FreeHunter, quarantaine des lanes mortes
-    - bind(account_id): attribue une lane persistante (1:1) et la retourne
-    - burn_lane(account_id): remplace la lane sur 403/429; cookies intacts
+    - health_loop(): FreeHunter style background loop, quarantine of dead lanes
+    - bind(account_id): assigns a persistent lane (1:1) and returns it
+    - burn_lane(account_id): replaces the lane on 403/429; intact cookies
     """
 
     def __init__(self, lanes_path="data/egress_lanes.json", probe_interval=120,
@@ -201,7 +220,7 @@ class EgressLanePool:
         self._running = False
         self._task = None
         self.stats = {"probes": 0, "burns": 0, "quarantined": 0, "refreshes": 0}
-        # ── Etat du scan mondial temps reel ──
+        # ── Real-time global scan status ──
         self._scan_running = False
         self._scan_last_ts = 0.0
         self._scan_duration = 0.0
@@ -304,10 +323,10 @@ class EgressLanePool:
         _log("[EgressLanes] probes: " + str(ok) + "/" + str(len(candidates)) + " OK")
         return ok
 
-    # --- Binding lane <-> compte ---
+    # --- Binding lane <-> account ---
 
-    def _pick_proxy(self):
-        usable = [ep for ep in self.pool if ep.is_usable]
+    def _pick_proxy(self, require_browser=False, provider=None):
+        usable = [ep for ep in self.pool if ep.is_browser_ready(provider)] if require_browser else [ep for ep in self.pool if ep.is_usable]
         bound = {lane.proxy.url for lane in self.lanes.values()}
         free = [ep for ep in usable if ep.url not in bound]
         candidates = free or usable
@@ -319,11 +338,11 @@ class EgressLanePool:
             return probed[0]
         return candidates[0]
 
-    def bind(self, account_id, tls_profile="chrome120"):
+    def bind(self, account_id, tls_profile="chrome120", require_browser=False, provider=None):
         existing = self.lanes.get(account_id)
-        if existing and existing.proxy.is_usable:
+        if existing and (existing.proxy.is_browser_ready(provider) if require_browser else existing.proxy.is_usable):
             return existing
-        proxy = self._pick_proxy()
+        proxy = self._pick_proxy(require_browser=require_browser, provider=provider)
         if proxy is None:
             return None
         lane = Lane(
@@ -341,7 +360,7 @@ class EgressLanePool:
         return self.lanes.get(account_id)
 
     def add_proxy(self, url, source="user", kind="http"):
-        """Ajoute un proxy au pool (dedupe par URL). Retourne l'endpoint ou None."""
+        """Adds a proxy to the pool (dedupe by URL). Returns the endpoint or None."""
         url = (url or "").strip()
         if not url:
             return None
@@ -359,8 +378,8 @@ class EgressLanePool:
         return ep
 
     def rebind(self, account_id, tls_profile=None):
-        """Re-attache une lane pour un compte: nouveau proxy + profil TLS optionnel.
-        Les cookies de session ne sont pas touches (ils vivent dans SessionManager)."""
+        """Re-attach a lane for an account: new proxy + optional TLS profile.
+        Session cookies are not touched (they live in SessionManager)."""
         old = self.lanes.get(account_id)
         profile = tls_profile or (old.tls_profile if old else "chrome120")
         if old is not None:
@@ -430,7 +449,7 @@ class EgressLanePool:
         except Exception as e:
             _log("[EgressLanes] load failed: " + str(e))
 
-    # --- Boucle de sante (style FreeHunter) ---
+    # --- Health loop (FreeHunter style) ---
 
     async def health_loop(self, interval_seconds=None):
         interval = interval_seconds or self.probe_interval
@@ -465,13 +484,58 @@ class EgressLanePool:
             "probes": self.stats.get("probes", 0),
         }
 
+
+def create_egress_pool(config_path="config/egress_pool.yaml"):
+    """Build the pool from the same config used by the dashboard.
+
+    Previously main.py and mcp_server.py silently ignored egress_pool.yaml,
+    so saved proxies/Tor settings had no effect until a process restart (and
+    even then were never read).
+    """
+    import yaml
+
+    configured_home = os.environ.get("VIAROMA_HOME")
+    cwd = Path.cwd()
+    if configured_home:
+        root = Path(configured_home)
+    elif (cwd / "config" / "egress_pool.yaml").exists() or (cwd / "data").exists():
+        # Keep tests and explicit working-directory runs isolated.
+        root = cwd
+    else:
+        root = Path(__file__).resolve().parents[2]
+    path = Path(config_path)
+    if not path.is_absolute():
+        path = root / path
+    data = {}
+    if path.exists():
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+    # Explicit environment override for users without Tor. This is opt-in:
+    # arbitrary system proxy variables are not trusted for credential traffic.
+    static_proxies = list(data.get("static_proxies") or [])
+    env_proxy = os.environ.get("VIAROMA_PROXY", "").strip()
+    if env_proxy and env_proxy not in static_proxies:
+        static_proxies.append(env_proxy)
+
+    lanes_path = Path(str(data.get("lanes_path") or "data/egress_lanes.json"))
+    if not lanes_path.is_absolute():
+        lanes_path = root / lanes_path
+    pool = EgressLanePool(
+        lanes_path=str(lanes_path),
+        probe_interval=int(data.get("probe_interval", 120)),
+        probe_timeout=int(data.get("probe_timeout", 8)),
+        quarantine_seconds=int(data.get("quarantine_seconds", 600)),
+        enable_tor=bool(data.get("enable_tor", True)),
+        static_proxies=static_proxies,
+    )
+
     def get_scan_stats(self):
-        """Stats du scan mondial temps reel."""
+        """Real-time global scan stats."""
         return {
             "scanning": self._scan_running,
             "last_scan": self._scan_last_ts,
             "last_scan_duration_s": round(self._scan_duration, 1) if self._scan_duration else 0,
-            "sources_total": len(WORLDWIDE_SOURCES),
+            "sources_total": len(PUBLIC_PROXY_SOURCES) + len(WORLDWIDE_SOURCES),
             "sources_fetched": self._scan_sources_ok,
             "proxies_found": self._scan_proxies_found,
             "proxies_probed": self._scan_proxies_probed,
@@ -482,16 +546,16 @@ class EgressLanePool:
         }
 
     async def scan_worldwide(self, max_proxies=200, concurrency=50, flag_check=True):
-        """Scanne mondial temps reel: 20+ sources -> probe -> flag-check LLM -> pool.
+        """Real-time global scan: 20+ sources -> probe -> flag-check LLM -> pool.
 
-        1. Fetch toutes les sources mondiales (PUBLIC_PROXY_SOURCES + WORLDWIDE_SOURCES).
-        2. Deduplique les proxies.
-        3. Probe chaque proxy (IP publique, latence, pays/ASN).
-        4. Flag-check: teste si l'IP est bloquee par les LLM providers (403/429).
-        5. Ajoute uniquement les proxies non-flagges au pool.
+        1. Fetch all global sources (PUBLIC_PROXY_SOURCES + WORLDWIDE_SOURCES).
+        2. Deduplicates the proxies.
+        3. Probe each proxy (IP publique, latence, pays/ASN).
+        4. Flag-check: tests if the IP is blocked by LLM providers (403/429).
+        5. Adds only non-flagged proxies to the pool.
         """
         if self._scan_running:
-            return {"error": "scan deja en cours"}
+            return {"error": "scan already in progress"}
         self._scan_running = True
         t0 = time.time()
         all_sources = {**PUBLIC_PROXY_SOURCES, **WORLDWIDE_SOURCES}
@@ -503,7 +567,7 @@ class EgressLanePool:
         self._scan_proxies_added = 0
         self._scan_flag_summary = {}
 
-        # Phase 1: fetch toutes les sources (timeout court 10s, semaphore 8 concurrent)
+        # Phase 1: fetch all sources (short timeout 10s, semaphore 8 concurrent)
         fetch_timeout = aiohttp.ClientTimeout(total=10, connect=5)
         fetch_sem = asyncio.Semaphore(8)
         async with aiohttp.ClientSession(timeout=fetch_timeout) as session:
@@ -511,11 +575,11 @@ class EgressLanePool:
             for name, url in all_sources.items():
                 kind = ProxyKind.SOCKS5 if "socks5" in name else (ProxyKind.SOCKS5 if "socks4" not in name and "socks" in name else ProxyKind.HTTP)
                 if "socks4" in name:
-                    kind = ProxyKind.SOCKS5  # traites comme SOCKS5 (fallback)
+                    kind = ProxyKind.SOCKS5  # treated as SOCKS5 (fallback)
                 fetch_tasks.append(self._fetch_source(session, name, url, kind, fetch_sem))
             results = await asyncio.gather(*fetch_tasks, return_exceptions=True)
 
-            # Deduplication (O(n) avec set de tracking, pas O(n²))
+            # Deduplication (O(n) with tracking set, not O(n²))
             existing_urls = {ep.url for ep in self.pool}
             seen_urls = set()
             all_proxies = []
@@ -536,7 +600,7 @@ class EgressLanePool:
                 self._scan_last_ts = time.time()
                 return {"error": "aucun proxy trouve", "sources_ok": sources_ok}
 
-            # Phase 2+3: probe + flag-check (limite le nombre de proxies)
+            # Phase 2+3: probe + flag-check (limits the number of proxies)
             candidates = all_proxies[:max_proxies]
             semaphore = asyncio.Semaphore(concurrency)
             probe_tasks = [_probe_and_flag(session, ep, semaphore, flag_check) for ep in candidates]
@@ -550,13 +614,13 @@ class EgressLanePool:
                 self._scan_proxies_probed += 1
                 if status == "clean":
                     self._scan_proxies_clean += 1
-                    # Ajoute au pool
+                    # Add to pool
                     ep.source = "worldwide-scan"
                     self.pool.append(ep)
                     self._scan_proxies_added += 1
                 elif status == "flagged":
                     self._scan_proxies_flagged += 1
-                # Resume des flags par provider
+                # Summary of flags by provider
                 for pname, pstatus in checks.items():
                     if pstatus == "flagged":
                         flag_summary[pname] = flag_summary.get(pname, 0) + 1
@@ -580,7 +644,7 @@ class EgressLanePool:
         }
 
     async def _fetch_source(self, session, name, url, kind, fetch_sem=None):
-        """Fetch une source de proxies (texte ou JSON) avec semaphore."""
+        """Fetch a proxy source (text or JSON) with semaphore."""
         out = []
         sem_ctx = fetch_sem if fetch_sem else _NoopCM()
         async with sem_ctx:
@@ -616,12 +680,20 @@ class EgressLanePool:
                 pass
         return out
 
+    # The scanner methods live in this factory's legacy block. Bind them to
+    # the returned pool instance so the Dashboard endpoint can call them.
+    import types
+    pool.get_scan_stats = types.MethodType(get_scan_stats, pool)
+    pool.scan_worldwide = types.MethodType(scan_worldwide, pool)
+    pool._fetch_source = types.MethodType(_fetch_source, pool)
+    return pool
+
 
 # ════════════════════════════════════════════════════════════════════
-# SCANNER MONDIAL TEMPS REEL — Proxies non-flagges par les LLM
+# REAL-TIME GLOBAL SCANNER — Non-flagged proxies by LLM
 # ════════════════════════════════════════════════════════════════════
 
-# Sources mondiales supplementaires (au-dela de PUBLIC_PROXY_SOURCES).
+# Additional global sources (beyond PUBLIC_PROXY_SOURCES).
 WORLDWIDE_SOURCES = {
     # JSON APIs (structured, with country/uptime metadata)
     "geonode-json-http": "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc&protocols=http&filterUpTime=80",
@@ -644,26 +716,31 @@ WORLDWIDE_SOURCES = {
     "proxy-list-dl-anon-socks5": "https://www.proxy-list.download/api/v1/get?type=socks5&anon=elite",
 }
 
-# Endpoints LLM pour le flag-check: si l'IP est flaggee, on obtient 403/429.
+# LLM endpoints for flag-check: if the IP is flagged, we get 403/429.
 # (name, url, ok_statuses, flagged_statuses)
 FLAG_CHECK_ENDPOINTS = [
-    # Cloudflare protege Claude.ai, OpenAI, beaucoup de LLM chats.
+    # Cloudflare protects Claude.ai, OpenAI, many LLM cats.
     ("cloudflare", "https://challenges.cloudflare.com/turnstile/v0/api.js", {200}, {403, 503}),
-    # OpenAI API: 401 = cle requise (IP OK), 403/429 = IP bloquee.
+    # Real login pages: a proxy that only reaches IPify is not useful if the
+    # target service immediately returns a Cloudflare block page.
+    ("claude_web", "https://claude.ai/login", {200, 301, 302}, {403, 429, 503}),
+    ("chatgpt_web", "https://chatgpt.com/auth/login", {200, 301, 302}, {403, 429, 503}),
+    ("gemini_web", "https://gemini.google.com/app", {200, 301, 302}, {403, 429, 503}),
+    # OpenAI API: 401 = key required (IP OK), 403/429 = IP blocked.
     ("openai", "https://api.openai.com/v1/models", {401}, {403, 429}),
-    # Anthropic API: 400/401 = requete invalide/cle requise (IP OK), 403 = IP bloquee.
+    # Anthropic API: 400/401 = invalid request/key required (IP OK), 403 = IP blocked.
     ("anthropic", "https://api.anthropic.com/v1/messages", {400, 401}, {403, 429}),
     # HuggingFace: 200 = OK, 403/429 = IP bloquee.
     ("huggingface", "https://huggingface.co/api/models?limit=1", {200}, {403, 429}),
-    # Google AI: 400 = cle invalide (IP OK), 429 = IP flaggee.
+    # Google AI: 400 = invalid key (IP OK), 429 = IP flagged.
     ("google_ai", "https://generativelanguage.googleapis.com/v1/models?key=invalid_test_key_xyz", {400, 403}, {429}),
 ]
 
 
 async def _check_proxy_flag(session, proxy_url, semaphore):
-    """Teste si un proxy est flagge par les LLM providers.
+    """Tests if a proxy is flagged by LLM providers.
 
-    Retourne (status, checks_dict) ou status = "clean" | "flagged" | "dead".
+    Returns (status, checks_dict) or status = "clean" | "flagged" | "dead".
     """
     checks = {}
     any_flagged = False
@@ -682,7 +759,7 @@ async def _check_proxy_flag(session, proxy_url, semaphore):
                         any_ok = True
                     else:
                         checks[name] = "other_" + str(code)
-                        any_ok = True  # pas un flag clair, on considere OK
+                        any_ok = True  # not a clear flag, we consider OK
             except asyncio.TimeoutError:
                 checks[name] = "timeout"
             except Exception as e:
@@ -695,7 +772,7 @@ async def _check_proxy_flag(session, proxy_url, semaphore):
 
 
 async def _probe_and_flag(session, ep, semaphore, do_flag_check=True):
-    """Probe un proxy (IP + latence) puis flag-check LLM si connectivite OK."""
+    """Probe a proxy (IP + latency) then flag-check LLM if connectivity OK."""
     start = time.time()
     # Phase 1: connectivite
     try:
@@ -725,6 +802,12 @@ async def _probe_and_flag(session, ep, semaphore, do_flag_check=True):
     # Phase 2: flag-check LLM
     if do_flag_check:
         flag_status, checks = await _check_proxy_flag(session, ep.url, semaphore)
+        # A proxy that reaches IPify but cannot reach Cloudflare is not a
+        # usable browser-login proxy for Claude/GPT. Keep it out of the ready
+        # list instead of falsely calling it clean because another endpoint
+        # answered.
+        if checks.get("cloudflare") != "ok":
+            flag_status = "flagged"
         ep.flag_status = flag_status
         ep.flag_checks = checks
     else:

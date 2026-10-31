@@ -1,8 +1,8 @@
-// ViaRoma Colisee — point d'entree unique.
+// ViaRoma Coliseum — single point of entry.
 //
-// Le rendu 3D cinematique vit dans colosseum3d.js (Three.js + modele GLB
-// reel). Ce fichier le charge et garantit un repli: si WebGL, three.js ou
-// le GLB sont indisponibles, on dessine un Colisee 2D sobre plutot qu'un
+// Cinematic 3D rendering lives in colosseum3d.js (Three.js + GLB model
+// real). This file loads it and guarantees a fallback: if WebGL, three.js Or
+// the GLB are unavailable, we design a simple 2D Coliseum rather than one
 // canvas vide.
 (function () {
   'use strict';
@@ -11,8 +11,8 @@
   let loaded = false;
 
   function fallback2D(canvas) {
-    // Projection pinhole legere sur un cylindre elliptique: suffisament
-    // lisible pour un header, et 100% local.
+    // Light pinhole projection on an elliptical cylinder: sufficient
+    // readable for a header, and 100% local.
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     let raf = 0, t0 = Date.now();
@@ -79,8 +79,8 @@
     document.head.appendChild(s);
   }
 
-  // Attend le 3D, puis bascule. Si le 3D n'est pas pret (WebGL absent ou
-  // echec de chargement), on installe le repli 2D.
+  // Wait for 3D, then switch. If the 3D is not ready (WebGL absent or
+  // loading failure), we install the 2D fallback.
   function ensure() {
     install3D();
     const deadline = Date.now() + 6000;

@@ -1,5 +1,5 @@
-// RomaDrawer — panneau de detail. Chaque element cliquable du dashboard
-// ouvre ici une fiche REELLE (donnees du serveur + actions executables).
+// RomaDrawer — detail panel. Each clickable element of the dashboard
+// opens a REAL file here (server data + executable actions).
 (function () {
   'use strict';
 
@@ -44,7 +44,7 @@
       a.innerHTML = (opts.actions || []).map((x, i) => {
         const cls = x.kind === 'primary' ? 'btn primary' : (x.kind === 'danger' ? 'btn danger' : 'btn');
         const data = Object.entries(x.data || {}).map(([k2, v]) => `data-${k2}="${String(v).replace(/"/g, '&quot;')}"`).join(' ');
-        return `<button class="${cls}" data-action="${x.action}" ${data}>${x.label}</button>`;
+        return `<button class="${cls}"data-action="${x.action}" ${data}>${x.label}</button>`;
       }).join('');
     }
     document.body.classList.add('drawer-open');
@@ -63,7 +63,7 @@
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
-  // Petits blocs reutilisables dans le corps du drawer.
+  // Small reusable blocks in the drawer body.
   const rows = (pairs) => '<div class="drawer-rows">' + pairs
     .filter(p => p && p[1] !== undefined && p[1] !== null && p[1] !== '')
     .map(p => `<div class="drawer-row"><span class="k">${p[0]}</span><span class="v">${p[1]}</span></div>`)

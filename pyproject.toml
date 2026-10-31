@@ -23,13 +23,13 @@ dependencies = [
   "pydantic>=2.7.0",
   "curl_cffi>=0.7.0",
   "aiohttp>=3.9.3",
-  "camoufox>=0.4.0",
+  "playwright>=1.40.0",
   "mcp>=2.0.0",
   "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
-# Aucun extra optionnel: redis n'etait pas utilise par le noyau (liste mort).
+# No optional extras: redis was not used by the kernel (dead list).
 
 [project.urls]
 Homepage = "https://github.com/MlkBlk-IT/ViaRoma"
@@ -44,9 +44,9 @@ via-roma = "src.main:main"
 include = ["src*"]
 
 [tool.setuptools.package-data]
-# static/vendor/** est OBLIGATOIRE: three.js (renderer 3D de la Colisée) est
-# vendu dans le depot. Sans lui, le dashboard du paquet installe s'ouvre mais
-# la Colisée 3D reste muette.
+# static/vendor/** is REQUIRED: three.js (3D renderer of the Colosseum) is
+# sold in the depot. Without it, the dashboard of the installed package opens but
+# the 3D Colosseum remains silent.
 "src.dashboard" = [
     "static/*.html",
     "static/*.css",

@@ -1,4 +1,4 @@
-# Cascade de fallback + circuit breaker
+# Fallback cascade + circuit breaker
 providers: [claude_web, gemini_web]
 provider_accounts:
   claude_web: claude-perso

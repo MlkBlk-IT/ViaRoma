@@ -1,1 +1,1 @@
-"""Dashboard ViaRoma : UI de pilotage du routeur Roma."""
+"""ViaRoma Dashboard: UI for controlling the Roma router."""

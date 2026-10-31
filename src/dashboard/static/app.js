@@ -1,13 +1,13 @@
 /* ViaRoma Dashboard — Pure vanilla JS. ENGLISH UI. Plug & Play. */
-/* TOUT est clickable. Event delegation global. Zero bouton mort. */
+/* EVERYTHING is clickable. Global delegation event. Zero dead button. */
 
 const $ = (s, p=document) => p.querySelector(s);
 const $$ = (s, p=document) => [...p.querySelectorAll(s)];
 const esc = (s) => String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const fmtAgo = (ts) => { if(!ts) return '—'; const s = Date.now()/1000 - ts; if(s<60) return Math.floor(s)+'s ago'; if(s<3600) return Math.floor(s/60)+'m ago'; return Math.floor(s/3600)+'h ago'; };
-// Ecriture sure: si l'onglet a change pendant le chargement, on n'ecrit pas
-// dans un DOM qui n'existe plus (source d'erreur "null innerHTML").
-const setHTML = (sel, html) => { const e = $(sel); if (e) { e.innerHTML = html; return true; } return false; };
+// Ecriture sure: si l'onglet a change pendant le chargement, on n'not writing
+// in a DOM that n'existe plus (source d'error "null innerHTML").
+const setHTML = (salt, html) => { const e = $(salt); if (e) { e.innerHTML = html; return true; } return false; };
 const tabStill = (tab) => state.activeTab === tab;
 
 async function api(path, opts={}) {
@@ -18,7 +18,7 @@ async function api(path, opts={}) {
   } catch(e) { throw e; }
 }
 
-// Appel HORS du prefixe /api/dashboard (ex: /v1/chat/completions).
+// Call OUTSIDE the /api/dashboard prefix (ex: /v1/chat/completions).
 async function apiRaw(path, opts={}) {
   const r = await fetch(path, {headers:{'Content-Type':'application/json',...opts.headers}, ...opts});
   if (!r.ok) { const e = await r.json().catch(()=>({detail:r.statusText})); throw new Error(e.detail||('HTTP '+r.status)); }
@@ -29,21 +29,21 @@ function btn(label, action, opts={}) {
   const cls = opts.primary ? 'btn primary' : opts.danger ? 'btn danger' : 'btn';
   let data = '';
   if (opts.data) for (const [k,v] of Object.entries(opts.data)) data += ` data-${k}="${esc(v)}"`;
-  return `<button class="${cls}" data-action="${action}"${data}>${label}</button>`;
+  return `<button class="${cls}"data-action="${action}"${data}>${label}</button>`;
 }
-function kpi(rows) { return '<div class="kpi-row">'+rows.map(([v,l,a])=>`<div class="kpi"${a?` data-action="${a}" title="Cliquer pour agir"`:''}><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')+'</div>'; }
+function kpi(rows) { return '<div class="kpi-row">'+rows.map(([v,l,a])=>`<div class="kpi"${a?` data-action="${a}" title="Click to act"`:''}><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')+'</div>'; }
 function badge(state) { const ok = ['closed','active','ready','ok','healthy','running'].includes(state); return `<span class="badge ${ok?'ok':'off'}">${esc(state)}</span>`; }
 
 const state = {
-  activeTab: 'overview', log: [], hideSecrets: true, traffic: [],
+  activeTab: 'providers', log: [], hideSecrets: true, traffic: [],
   hunterStats: null, cascadeProviders: null, egressStats: null, sessionsStats: null,
   editingCred: null, flagCheckEnabled: true,
   cfgActive: null, cfgData: {},
   hunterFilter: 'all', hunterSearch: '',
 };
 
-// ═══ EVENT DELEGATION GLOBAL ═══
-// Un seul listener pour TOUS les data-action. Plus jamais de bouton mort.
+// ═══ GLOBAL EVENT DELEGATION ═══
+// A single listener for ALL data-actions. No more dead buttons.
 document.addEventListener('click', async (ev) => {
   const el = ev.target.closest('[data-action]');
   if (!el) return;
@@ -62,15 +62,15 @@ function log(msg, kind='') {
 }
 
 // ═══ TAB SWITCHING ═══
-// ATTENTION: toute cle de loaders DOIT avoir son loader. Avant, un onglet
-// inconnu tombait sur loadOverview() qui sortait aussitot (tabStill) et
-// laissait « Loading... » a l'ecran pour toujours.
+// WARNING: any loader key MUST have its loader. Before, a tab
+// unknown fell on loadOverview() which immediately exited (tabStill) and
+// left “Loading...” at l'ecran pour toujours.
 const loaders = {
   overview: loadOverview, hunter: loadHunter, cascade: loadCascade,
   sessions: loadSessions, egress: loadEgress, providers: loadProviders,
   credentials: loadCredentials, antiwaf: loadAntiWAF, identities: loadIdentities,
   config: loadFormConfig,
-  security: loadSecurity, metrics: loadMetrics, journal: loadJournal,
+  security: loadSecurity, metrics: loadMetrics, log: loadJournal,
   architecture: loadArchitecture, playground: loadPlayground, models: loadModels,
   live: loadLive,
 };
@@ -81,15 +81,15 @@ function switchTab(tab) {
   const c = $('#tab-content');
   const loader = loaders[tab];
   if (!loader) {
-    if (c) c.innerHTML = `<div class="tab-panel"><p class="hint">Onglet indisponible: ${esc(tab)}</p></div>`;
-    log('Onglet inconnu: ' + tab, 'err');
+    if (c) c.innerHTML = `<div class="tab-panel"><p class="hint">Unavailable tab: ${esc(tab)}</p></div>`;
+    log('Unknown tab: ' + tab, 'err');
     return;
   }
   if (c) c.innerHTML = '<div class="tab-panel"><p class="hint">Loading…</p></div>';
   Promise.resolve(loader()).catch(e => {
-    log('onglet ' + tab + ': ' + e.message, 'err');
+    log('tab ' + tab + ': ' + e.message, 'err');
     if (c && state.activeTab === tab) {
-      c.innerHTML = `<div class="tab-panel"><p class="hint">Erreur: ${esc(e.message)}</p></div>`;
+      c.innerHTML = `<div class="tab-panel"><p class="hint">Error: ${esc(e.message)}</p></div>`;
     }
   });
   renderRightPanel();
@@ -98,12 +98,22 @@ function switchTab(tab) {
 // ═══ OVERVIEW ═══
 async function loadOverview() {
   if (!tabStill('overview')) return;
+  // Check if any providers are connected — show getting started banner if not
+  let connectedCount = 0;
+  try { const a = await api('/providers/detail'); connectedCount = (a.providers||[]).filter(p=>(p.cookie_count||0)>0).length; } catch(e) {}
+  const gsBanner = connectedCount === 0 ? `<div class="card glass" style="border:1px solid var(--accent);margin-bottom:16px">
+    <h3>🚀 Getting Started</h3>
+    <p>You haven't connected any providers yet. It takes 1 click:</p>
+    <ol style="margin:8px 0 8px 20px"><li>Go to the <b>Providers</b> tab (left panel)</li><li>Click <b>🔌 Connect</b> on Claude, Gemini, or any provider</li><li>A browser opens — log in as you normally would</li><li>Done! Cookies are captured automatically</li></ol>
+    <div class="btn-row">${btn('🔌 Go to Providers','goto-providers',{primary:true})}</div>
+  </div>` : '';
   $('#tab-content').innerHTML = `<div class="tab-panel">
     <h2>Roma Overview</h2>
+    ${gsBanner}
     <div class="hero">
       <div class="hero-colosseum-wrap">
         <canvas class="colosseum-hero" id="colosseum-hero"></canvas>
-        <div class="hero-caption"><span><b>COLISEVM</b> · arene de routage</span><span id="ov-hero-state">—</span></div>
+        <div class="hero-caption"><span><b>COLOSSEUM</b> · routing arena</span><span id="ov-hero-state">—</span></div>
       </div>
       <div class="spoof-wrap">
         <canvas class="spoof-canvas" id="spoof-overview"></canvas>
@@ -116,8 +126,8 @@ async function loadOverview() {
       <div class="tile" id="ov-guard"></div>
     </div>
   </div>`;
-  // Le Colisée du hero (grand format) est monte a chaud: il n'existe pas
-  // au chargement de la page, le module ne voit que les canvas presents.
+  // The hero's Coliseum (large format) is hot-mounted: it does not exist
+  // When the page loads, the module only sees the canvases present.
   if (window.ViaRomaColosseum) window.ViaRomaColosseum.mount($('#colosseum-hero'));
   try {
     const [h, c, s2, e, sec] = await Promise.all([
@@ -140,12 +150,12 @@ async function loadOverview() {
       });
     }
     const hs = $('#ov-hero-state');
-    if (hs) hs.textContent = routing.length + ' route(s) active(s) · ' + lanes.length + ' lane(s)';
+    if (hs) hs.textContent = routing.length + ' active route(s) · ' + lanes.length + ' lane(s)';
 
-    // ── TILE 1 · Centre de commandement (routage REEL) ─────────────
+    // ── TILE 1 · Command center (REAL routing) ─────────────
     const rmap = {}; routing.forEach(r => rmap[r.label] = r);
-    let cmd = `<div class="tile-head"><h3>🏛 Centre de commandement</h3><span class="sub">${chain.length} etape(s)</span></div>
-      <div class="cmd-flow"><div class="cmd-node">requete</div><div class="cmd-arrow">→</div><div class="cmd-node cmd-hub">CascadeManager</div></div>`;
+    let cmd = `<div class="tile-head"><h3>🏛 Command Center</h3><span class="sub">${chain.length} step(s)</span></div>
+      <div class="cmd-flow"><div class="cmd-node">request</div><div class="cmd-arrow">→</div><div class="cmd-node cmd-hub">CascadeManager</div></div>`;
     if (chain.length) {
       cmd += '<div class="cmd-provs">';
       chain.forEach(cp => {
@@ -159,47 +169,47 @@ async function loadOverview() {
       });
       cmd += '</div>';
     } else {
-      cmd += '<p class="empty">Aucun provider routable: le fail-closed bloque tout appel sans egress.</p>';
+      cmd += '<p class="empty">No routable provider: fail-closed blocks any call without egress.</p>';
     }
-    cmd += `<p class="tile-note" style="margin-top:8px"><span>Chaine: ${esc(chain.map(x=>x.name).join(' → ') || '—')}</span><span>retries ${(c.config||{}).max_retries ?? 3}</span></p>`;
+    cmd += `<p class="tile-note" style="margin-top:8px"><span>Chain: ${esc(chain.map(x=>x.name).join(' → ') || '—')}</span><span>retries ${(c.config||{}).max_retries ?? 3}</span></p>`;
     setHTML('#ov-cmd', cmd);
 
-    // ── TILE 2 · Trafic & catalogue ─────────────────────────────────
+    // ── TILE 2 · Traffic & catalog ─────────────────────────────────
     const totalModels = h.stats?.total_models||0;
     const frontier = h.stats?.active_frontier||0;
     const nProv = Object.keys(c.providers||{}).length;
     const usable = e.stats?.usable||0, pool = e.stats?.pool_size||0;
     const pct = totalModels ? Math.round((frontier/totalModels)*100) : 0;
-    setHTML('#ov-traffic', `<div class="tile-head"><h3>📊 Trafic & catalogue</h3><span class="sub">reel</span></div>
+    setHTML('#ov-traffic', `<div class="tile-head"><h3>📊 Traffic & catalog</h3><span class="sub">real</span></div>
       <div class="tile-stat-row">
-        <button class="tile-stat" data-action="tab-open" data-tab="models"><b>${totalModels}</b><span>Modeles</span></button>
+        <button class="tile-stat" data-action="tab-open" data-tab="models"><b>${totalModels}</b><span>Models</span></button>
         <button class="tile-stat" data-action="go-frontier"><b>${frontier}</b><span>Frontier</span></button>
         <button class="tile-stat" data-action="tab-open" data-tab="providers"><b>${nProv}</b><span>Providers</span></button>
         <button class="tile-stat" data-action="tab-open" data-tab="egress"><b>${usable}/${pool}</b><span>Proxies</span></button>
       </div>
       <div class="tile-bar"><i style="width:${pct}%"></i></div>
-      <div class="tile-note"><span>Frontier du catalogue</span><span>${pct}%</span></div>
-      <div class="tile-note" style="margin-top:6px"><span>Burns ${e.stats?.burns||0}</span><span>Sondes ${e.stats?.probes||0}</span><span>Sessions ${s2.stats?.total_sessions||0}</span></div>`);
+      <div class="tile-note"><span>Frontier catalog</span><span>${pct}%</span></div>
+      <div class="tile-note" style="margin-top:6px"><span>Burns ${e.stats?.burns||0}</span><span>Probes ${e.stats?.probes||0}</span><span>Sessions ${s2.stats?.total_sessions||0}</span></div>`);
 
-    // ── TILE 3 · Requetes live (journal REEL) ───────────────────────
+    // ── TILE 3 · Live queries (REAL log) ───────────────────────
     const ev = state.log.slice(-6).reverse();
-    let live = `<div class="tile-head"><h3>📜 Requêtes live</h3><span class="sub">journal</span></div>`;
+    let live = `<div class="tile-head"><h3>📜 Live queries</h3><span class="sub">log</span></div>`;
     if (ev.length) {
-      live += '<table class="tile-table"><thead><tr><th>Heure</th><th>Evenement</th><th>Etat</th></tr></thead><tbody>'
-        + ev.map(l => `<tr class="clickable" data-action="tab-open" data-tab="journal"><td>${esc(l.ts)}</td><td>${esc(l.msg).slice(0,40)}</td><td>${l.kind==='err'?'<span class="dot-err"></span>err':'<span class="dot-ok"></span>ok'}</td></tr>`).join('')
+      live += '<table class="tile-table"><thead><tr><th>Time</th><th>Event</th><th>State</th></tr></thead><tbody>'
+        + ev.map(l => `<tr class="clickable" data-action="tab-open" data-tab="log"><td>${esc(l.ts)}</td><td>${esc(l.msg).slice(0,40)}</td><td>${l.kind==='err'?'<span class="dot-err"></span>err':'<span class="dot-ok"></span>ok'}</td></tr>`).join('')
         + '</tbody></table>';
     } else {
-      live += `<p class="empty">Aucun evenement pour l'instant. Lance une action: elle apparait ici et dans le Journal.</p>`;
+      live += `<p class="empty">No events yet. Launch an action: it appears here and in the Journal.</p>`;
     }
-    live += `<div class="tile-note" style="margin-top:8px"><span>${state.log.length} evenement(s)</span><span data-action="tab-open" data-tab="journal" style="cursor:pointer;color:var(--accent)">tout voir ›</span></div>`;
+    live += `<div class="tile-note" style="margin-top:8px"><span>${state.log.length} event(s)</span><span data-action="tab-open" data-tab="log" style="cursor:pointer;color:var(--accent)">see all ›</span></div>`;
     setHTML('#ov-live', live);
 
-    // ── TILE 4 · Garde-fous (fail-closed) ───────────────────────────
+    // ── TILE 4 · Safeguards (fail-closed) ───────────────────────────
     const allEgress = routing.length > 0 && routing.every(r => r.egress);
-    let guard = `<div class="tile-head"><h3>🛡️ Garde-fous</h3><span class="sub">fail-closed</span></div>
+    let guard = `<div class="tile-head"><h3>🛡️ Safeguards</h3><span class="sub">fail-closed</span></div>
       <div class="security-banner ${allEgress ? '' : 'warn'}" style="margin-bottom:8px">
         <span class="sp">${allEgress ? '🛡️' : '⚠️'}</span>
-        <span>${allEgress ? "L'IP de la machine n'est jamais transmise." : skipped.length + " compte(s) ecarte(s) sans proxy de sortie."}</span>
+        <span>${allEgress ? "The IP of the machine is never transmitted." : skipped.length + " ecard account(s) without exit proxy."}</span>
       </div>`;
     if (skipped.length) {
       guard += skipped.map(s => `<div class="skipped-row"><span>⛔ ${esc(s.account_id||'—')}</span><span class="why">${esc(s.reason||'')}</span></div>`).join('');
@@ -216,60 +226,60 @@ async function loadOverview() {
   } catch(e) { log('overview: '+e.message,'err'); }
 }
 
-// ═══ SECURITE ═══
+// ═══ SECURITY ═══
 async function loadSecurity() {
   if (!tabStill('security')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
-    <h2>🛡️ Sécurité — Fail-closed</h2>
+    <h2>🛡️ Security — Fail-closed</h2>
     <div class="btn-row">${btn('🔄 Recharger','security-refresh',{primary:true})}</div>
     <div class="tiles">
       <div class="tile" id="sec-state"></div>
       <div class="tile" id="sec-guarantees"></div>
     </div>
-    <div class="card glass"><h3>🛣️ Routage — chaque provider part par la lane de son compte</h3>
+    <div class="card glass"><h3>🛣️ Routing — each provider goes through their account lane</h3>
       <div id="sec-routing" class="card-list"></div></div>
-    <div class="card glass"><h3>⛔ Comptes écartés</h3>
+    <div class="card glass"><h3>⛔ Accounts excluded</h3>
       <div id="sec-skipped" class="card-list"></div></div>
   </div>`;
   try {
     const sec = await api('/security/summary');
     const routing = sec.routing||[], skipped = sec.skipped||[], lanes = sec.lanes||[];
-    setHTML('#sec-state', `<div class="tile-head"><h3>État des garanties</h3><span class="sub">en direct</span></div>
+    setHTML('#sec-state', `<div class="tile-head"><h3>Status of guarantees</h3><span class="sub">live</span></div>
       <div class="tile-stat-row">
         <div class="tile-stat"><b>${sec.fail_closed ? 'ACTIF' : 'INACTIF'}</b><span>Fail-closed</span></div>
         <div class="tile-stat"><b>${sec.real_ip_exposed ? 'OUI' : 'NON'}</b><span>IP exposee</span></div>
         <div class="tile-stat"><b>${sec.credentials_exposed ? 'OUI' : 'NON'}</b><span>Credentials</span></div>
         <div class="tile-stat"><b>${lanes.length}</b><span>Lanes</span></div>
       </div>
-      <div class="tile-note" style="margin-top:10px"><span>Comptes routes: ${routing.length}</span><span>Comptes ecartes: ${skipped.length}</span></div>`);
-    setHTML('#sec-guarantees', `<div class="tile-head"><h3>Ce que le noyau garantit</h3><span class="sub">${(sec.guarantees||[]).length} regles</span></div>`
+      <div class="tile-note" style="margin-top:10px"><span>Routed accounts: ${routing.length}</span><span>Skipped accounts: ${skipped.length}</span></div>`);
+    setHTML('#sec-guarantees', `<div class="tile-head"><h3>What the kernel guarantees</h3><span class="sub">${(sec.guarantees||[]).length} rules</span></div>`
       + '<div class="drawer-rows">' + (sec.guarantees||[]).map(g => `<div class="drawer-row"><span class="k">✔</span><span class="v" style="text-align:left">${esc(g)}</span></div>`).join('') + '</div>');
     setHTML('#sec-routing', routing.length ? routing.map(r => `
       <div class="row clickable" data-action="provider-detail" data-key="${esc(r.provider_key)}">
         <span class="name">${esc(r.label)}</span>
         <span class="meta">${esc(r.account_id)} · ${esc(r.tls_profile)} · ${esc(r.locale)}</span>
-        <span class="badge ${r.egress?'ok':'off'}">${r.egress?'egress':'SANS EGRESS'}</span>
+        <span class="badge ${r.egress?'ok':'off'}">${r.egress?'egress':'NO EGRESS'}</span>
       </div>`).join('') : '<p class="empty">Aucun provider route.</p>');
     setHTML('#sec-skipped', skipped.length ? skipped.map(s => `
       <div class="row"><span class="name">⛔ ${esc(s.account_id)}</span>
       <span class="meta">${esc(s.reason)}</span></div>`).join('')
-      : '<p class="empty">Aucun compte ecarte — tout le monde a une sortie.</p>');
+      : '<p class="empty">No accounts left out — everyone has an exit.</p>');
   } catch(e) { log('security: '+e.message,'err'); }
 }
 
-// ═══ METRIQUES ═══
+// ═══ METRICS ═══
 async function loadMetrics() {
   if (!tabStill('metrics')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
-    <h2>📈 Métriques</h2>
+    <h2>📈 Metrics</h2>
     <div class="btn-row">${btn('🔄 Recharger','metrics-refresh',{primary:true})}</div>
     <div class="tiles">
-      <div class="tile"><div class="tile-head"><h3>Models by Tier</h3><span class="sub">catalogue</span></div>
+      <div class="tile"><div class="tile-head"><h3>Models by Tier</h3><span class="sub">catalog</span></div>
         <div class="chart-container"><canvas id="m-models" class="chart-canvas" style="height:180px"></canvas></div></div>
-      <div class="tile"><div class="tile-head"><h3>Circuit Breakers</h3><span class="sub">etats</span></div>
+      <div class="tile"><div class="tile-head"><h3>Circuit Breakers</h3><span class="sub">states</span></div>
         <div class="chart-container"><canvas id="m-breakers" class="chart-canvas" style="height:180px"></canvas></div></div>
     </div>
-    <div class="card glass"><h3>Répartition du catalogue</h3><div id="m-tiers" class="card-list"></div></div>
+    <div class="card glass"><h3>Catalog distribution</h3><div id="m-tiers" class="card-list"></div></div>
   </div>`;
   try {
     const h = await api('/hunter/detail?limit=1');
@@ -277,7 +287,7 @@ async function loadMetrics() {
     const tiers = h.tiers || h.stats?.by_tier || {};
     setHTML('#m-tiers', Object.keys(tiers).length ? Object.entries(tiers).map(([t,n]) => `
       <div class="row clickable" data-action="go-frontier"><span class="name">${esc(t)}</span>
-      <span class="meta">${n} modeles</span></div>`).join('') : '<p class="empty">Donnees de tier indisponibles.</p>');
+      <span class="meta">${n} models</span></div>`).join('') : '<p class="empty">Third-party data unavailable.</p>');
     if (window.ViaRomaCharts) {
       window.ViaRomaCharts.models($('#m-models'), h);
       window.ViaRomaCharts.breakers($('#m-breakers'), c);
@@ -287,22 +297,22 @@ async function loadMetrics() {
 
 // ═══ JOURNAL ═══
 async function loadJournal() {
-  if (!tabStill('journal')) return;
+  if (!tabStill('log')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
     <h2>📜 Journal</h2>
-    <div class="btn-row">${btn('🧹 Vider','journal-clear')} ${btn('📋 Copier','journal-copy')}</div>
-    <div class="card glass"><h3>Événements <span id="journal-count" class="badge ok">${state.log.length}</span></h3>
-      <div id="journal-list" class="card-list" style="max-height:560px;overflow-y:auto"></div></div>
+    <div class="btn-row">${btn('🧹 Clear','log-clear')} ${btn('📋 Copy','log-copy')}</div>
+    <div class="card glass"><h3>Events <span id="log-count" class="badge ok">${state.log.length}</span></h3>
+      <div id="log-list" class="card-list" style="max-height:560px;overflow-y:auto"></div></div>
   </div>`;
   renderJournal();
 }
 function renderJournal() {
-  const box = $('#journal-list'); if (!box) return;
-  const c = $('#journal-count'); if (c) c.textContent = state.log.length;
+  const box = $('#log-list'); if (!box) return;
+  const c = $('#log-count'); if (c) c.textContent = state.log.length;
   box.innerHTML = state.log.length ? state.log.slice().reverse().map(l => `
     <div class="row"><span class="name">${l.kind==='err'?'<span class="dot-err"></span>':(l.kind==='ok'?'<span class="dot-ok"></span>':'●')} ${esc(l.msg)}</span>
     <span class="meta">${esc(l.ts)}</span></div>`).join('')
-    : '<p class="empty">Aucun evenement. Lance une action depuis le dashboard.</p>';
+    : '<p class="empty">No events. Launch an action from the dashboard.</p>';
 }
 
 // ═══ ARCHITECTURE ═══
@@ -311,7 +321,7 @@ async function loadArchitecture() {
   $('#tab-content').innerHTML = `<div class="tab-panel">
     <h2>🏛️ Architecture d'orchestration</h2>
     <div class="btn-row">${btn('🔄 Recharger','arch-refresh',{primary:true})}</div>
-    <p class="hint">Graphe LIVE des briques reelles de ViaRoma. Chaque noeud est cliquable: il ouvre sa fiche et ses actions.</p>
+    <p class="hint">LIVE graph of real ViaRoma bricks. Each node is clickable: it opens its file and its actions.</p>
     <div class="arch-wrap"><div id="arch-mount"></div></div>
   </div>`;
   try {
@@ -330,13 +340,13 @@ async function loadPlayground() {
   if (!tabStill('playground')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
     <h2>⚔️ Console</h2>
-    <p class="hint">Envoie une vraie requete a la cascade via POST /v1/chat/completions (compatible OpenAI). Sans credentials, le serveur repond 503 — c'est la vraie reponse, pas une simulation.</p>
+    <p class="hint">Sends a real request to the cascade via POST /v1/chat/completions (OpenAI compatible). Without credentials, the server responds 503 — this is the real response, not a simulation.</p>
     <div class="card glass">
-      <div class="form-row"><input type="text" id="pg-model" value="frontier-auto" placeholder="modele"></div>
-      <div class="form-row"><textarea id="pg-msg" rows="4" placeholder="Votre message...">Test de bout en bout ViaRoma.</textarea></div>
-      <div class="btn-row">${btn('⚔️ Envoyer','playground-send',{primary:true})}</div>
+      <div class="form-row"><input type="text" id="pg-model" value="frontier-auto" placeholder="model"></div>
+      <div class="form-row"><textarea id="pg-msg" rows="4" placeholder="Your message...">ViaRoma end-to-end testing.</textarea></div>
+      <div class="btn-row">${btn('⚔️ Send','playground-send',{primary:true})}</div>
     </div>
-    <div class="card glass"><h3>Réponse</h3><div id="pg-out" class="card-list"><p class="empty">Aucune requete envoyee.</p></div></div>
+    <div class="card glass"><h3>Answer</h3><div id="pg-out" class="card-list"><p class="empty">No request sent.</p></div></div>
   </div>`;
 }
 async function sendPlayground() {
@@ -345,27 +355,27 @@ async function sendPlayground() {
   if (!msg.trim()) { log('Console: message vide', 'err'); return; }
   const out = $('#pg-out');
   if (out) out.innerHTML = '<p class="empty">Envoi en cours...</p>';
-  log('Console: envoi vers la cascade...');
+  log('Console: sending to the cascade...');
   try {
     const r = await apiRaw('/v1/chat/completions', {method:'POST', body:JSON.stringify({
       model, messages:[{role:'user', content: msg}], stream: false
     })});
     const content = (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content) || '';
-    if (out) out.innerHTML = `<div class="drawer-row"><span class="k">Modele</span><span class="v">${esc(r.model||model)}</span></div>
-      <pre class="drawer-code">${esc(content || '(reponse vide)')}</pre>`;
-    log('Console: reponse recue (' + (content||'').length + ' car.)', 'ok');
+    if (out) out.innerHTML = `<div class="drawer-row"><span class="k">Model</span><span class="v">${esc(r.model||model)}</span></div>
+      <pre class="drawer-code">${esc(content || '(empty response)')}</pre>`;
+    log('Console: response received (' + (content||'').length + ' car.)', 'ok');
   } catch(e) {
-    if (out) out.innerHTML = `<pre class="drawer-code">ERREUR: ${esc(e.message)}</pre>
-      <p class="drawer-note">C'est la VRAIE erreur du serveur. Un 503 signifie que la cascade a essaye tous les providers sans succes (credentials absents ou providers down).</p>`;
+    if (out) out.innerHTML = `<pre class="drawer-code">ERROR: ${esc(e.message)}</pre>
+      <p class="drawer-note">This is the REAL server error. A 503 means that the cascade has tried all providers without success (credentials absent or providers down).</p>`;
     log('Console: '+e.message, 'err');
   }
 }
 
-// ═══ MODELES ═══
+// ═══ MODELS ═══
 async function loadModels() {
   if (!tabStill('models')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
-    <h2>🗂️ Modèles libres</h2>
+    <h2>🗂️ Free templates</h2>
     <div class="btn-row">${btn('🔍 Scanner','hunter-scan')} ${btn('🔄 Recharger','models-refresh',{primary:true})}</div>
     <div id="models-kpi" class="kpi-row"></div>
     <div class="card glass"><h3>Frontier <span id="models-count" class="badge ok">—</span></h3>
@@ -374,7 +384,7 @@ async function loadModels() {
   try {
     const d = await api('/hunter/detail?tier=frontier&limit=200');
     setHTML('#models-kpi', kpi([
-      [d.total_catalog||0, 'Catalogue'],
+      [d.total_catalog||0, 'Catalog'],
       [d.total||0, 'Frontier'],
       [d.models?.length||0, 'Affiches'],
     ]));
@@ -384,22 +394,22 @@ async function loadModels() {
         <span class="name">${esc(m.model_id)}</span>
         <span class="meta">${esc((m.metadata||{}).origin?.label || '')} · ${esc(m.provider||'')}</span>
         <span class="badge ${m.tier==='frontier'?'ok':'off'}">${esc(m.tier||'')}</span>
-      </div>`).join('') || '<p class="empty">Aucun modele frontier.</p>');
+      </div>`).join('') || '<p class="empty">No frontier models.</p>');
   } catch(e) { log('models: '+e.message,'err'); }
 }
 
-// ═══ LIVE — sorties temps reel ═══
+// ═══ LIVE — real-time outputs ═══
 async function loadLive() {
   if (!tabStill('live')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
-    <h2>🔴 Live — sorties et annonces</h2>
-    <div class="btn-row">${btn('🔄 Rafraîchir','live-refresh',{primary:true})}</div>
+    <h2>🔴 Live — releases and announcements</h2>
+    <div class="btn-row">${btn('🔄 Refresh','live-refresh',{primary:true})}</div>
     <div id="live-kpi" class="kpi-row"></div>
     <div class="tiles">
       <div class="tile" id="live-releases"></div>
       <div class="tile" id="live-gguf"></div>
     </div>
-    <div class="card glass"><h3>📰 Flux live <span id="live-news-count" class="badge ok">—</span></h3>
+    <div class="card glass"><h3>📰 Live feed <span id="live-news-count" class="badge ok">—</span></h3>
       <div id="live-news" class="card-list" style="max-height:520px;overflow-y:auto"></div></div>
   </div>`;
   try {
@@ -408,29 +418,29 @@ async function loadLive() {
     setHTML('#live-kpi', kpi([
       [(bo.cn||0)+' cn', 'Chine', 'live-origin-cn'],
       [(bo.eu||0)+' eu', 'Europe', 'live-origin-eu'],
-      [(bo.us||0)+' us', 'Etats-Unis', 'live-origin-us'],
-      [(d.context_known||0), 'ctx réelle'],
+      [(bo.us||0)+' us', 'United States', 'live-origin-us'],
+      [(d.context_known||0), 'real ctx'],
       [(d.gguf||[]).length, 'GGUF'],
     ]));
-    setHTML('#live-releases', `<div class="tile-head"><h3>🆕 Sorties récentes</h3><span class="sub">créés sur HuggingFace</span></div>`
+    setHTML('#live-releases', `<div class="tile-head"><h3>🆕 Recent releases</h3><span class="sub">created on HuggingFace</span></div>`
       + ((d.recent||[]).slice(0,12).map(m => `
         <div class="row clickable" data-action="live-model" data-model="${esc(m.model_id)}">
           <span class="name">${esc(m.model_id.split('/').pop())}</span>
           <span class="meta">${esc((m.metadata||{}).origin?.label||'')}</span>
           <span class="badge ${m.context_window?'ok':'off'}">${m.context_window ? (m.context_window/1024).toFixed(0)+'k' : 'ctx ?'}</span>
-        </div>`).join('') || '<p class="empty">Aucune sortie recente.</p>'));
-    setHTML('#live-gguf', `<div class="tile-head"><h3>📦 Téléchargements GGUF</h3><span class="sub">fichiers réels</span></div>`
+        </div>`).join('') || '<p class="empty">No recent releases.</p>'));
+    setHTML('#live-gguf', `<div class="tile-head"><h3>📦 GGUF downloads</h3><span class="sub">actual files</span></div>`
       + ((d.gguf||[]).slice(0,10).map(m => `
         <div class="row clickable" data-action="live-model" data-model="${esc(m.model_id)}">
           <span class="name">${esc(m.model_id.replace('hf-gguf/','').split('/').pop())}</span>
-          <span class="meta">${(m.download_modes||[]).length} fichier(s) · ${esc((m.metadata||{}).origin?.label||'')}</span>
-        </div>`).join('') || '<p class="empty">Aucun depot GGUF.</p>'));
+          <span class="meta">${(m.download_modes||[]).length} file(s) · ${esc((m.metadata||{}).origin?.label||'')}</span>
+        </div>`).join('') || '<p class="empty">No GGUF deposit.</p>'));
     const nc = $('#live-news-count'); if (nc) nc.textContent = (d.news||[]).length;
     setHTML('#live-news', (d.news||[]).slice(0,60).map(n => `
       <div class="row">
         <span class="name">${n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(n.title)}</a>` : esc(n.title)}</span>
         <span class="meta">${esc(n.source||'')}</span>
-      </div>`).join('') || '<p class="empty">Aucun flux disponible.</p>');
+      </div>`).join('') || '<p class="empty">No feed available.</p>');
   } catch(e) { log('live: '+e.message,'err'); }
 }
 
@@ -451,7 +461,7 @@ async function loadHunter() {
         ${btn('Small','hunter-filter-small',{primary:state.hunterFilter==='small'})}
       </div>
     </div>
-    <div class="card glass"><h3>Discovered Models <span id="hunter-count" class="badge ok">—</span></h3>
+    <div class="card glass"><h3>Discovered models <span id="hunter-count" class="badge ok">—</span></h3>
       <div id="hunter-models" class="card-list" style="max-height:500px;overflow-y:auto"></div>
     </div>
   </div>`;
@@ -480,8 +490,8 @@ function renderHunterFilters() {
     btn('Small', 'hunter-filter-small', { primary: f === 'small' });
 }
 
-// Le catalogue fait ~2000 modeles: le filtrage se fait COTE SERVEUR
-// (sinon l'API renvoyait les 100 plus recents et le tier frontier etait invisible).
+// The catalog has ~2000 models: filtering is done on the SERVER SIDE
+// (otherwise the API returned the 100 most recent and the border tier was invisible).
 async function refreshHunterModels() {  const params = new URLSearchParams();
   if (state.hunterFilter && state.hunterFilter !== 'all') params.set('tier', state.hunterFilter);
   if (state.hunterSearch) params.set('q', state.hunterSearch);
@@ -501,9 +511,9 @@ function renderHunterModels() {
   el.innerHTML = models.slice(0, 300).map(m => {
     const tc = m.tier==='frontier'?'ok':'';
     return `<div class="row clickable" data-action="model-detail" data-model="${esc(m.model_id)}"><div><span class="name">${esc(m.model_id)}</span> <span class="badge ${tc}">${esc(m.tier)}</span></div><span class="meta">${esc(m.provider)} · ctx ${m.context_window||'—'} · ${fmtAgo(m.last_verified)}</span></div>`;
-  }).join('') || '<p class="empty">Aucun modèle. Clique sur "Scan Now".</p>';
+  }).join('') || '<p class="empty">No model. Click on “Scan Now”.</p>';
   const c = $('#hunter-count');
-  if (c) c.textContent = Math.min(300, models.length) + ' affichés / ' + (state.hunterTotal||0) + ' filtrés · ' + (state.hunterTotalCatalog||0) + ' au catalogue';
+  if (c) c.textContent = Math.min(300, models.length) + ' shown / ' + (state.hunterTotal||0) + ' filtered · ' + (state.hunterTotalCatalog||0) + ' in the catalog';
 }
 
 // ═══ CASCADE ═══
@@ -572,6 +582,11 @@ async function loadEgress() {
       <p class="hint">Click a proxy type. ViaRoma auto-scans 25+ sources and adds non-flagged proxies. Zero manual entry.</p>
       <div id="proxy-cards" class="grid-3"></div>
     </div>
+    <div class="card glass"><h3>✅ Verified proxies ready to use</h3>
+      <p class="hint">Only tested proxies are shown. Dead, untested, flagged, and burned proxies are hidden.</p>
+      <div class="btn-row"><label class="hint">Use for account:</label><select id="eg-ready-account" class="input"></select></div>
+      <div id="eg-ready" class="card-list"></div>
+    </div>
     <div class="btn-row">${btn('🔥 Burn Lane','burn-lane',{danger:true})} ${btn('🔄 Probe All','egress-probe')}</div>
     <div id="eg-kpi" class="kpi-row"></div>
     <div class="card glass"><h3>Lanes (live)</h3><div id="eg-lanes" class="card-list"></div></div>
@@ -582,8 +597,11 @@ async function loadEgress() {
     state.egressStats = d.stats;
     state.egressLanes = d.lanes || [];
     state.egressPool = d.pool || [];
+    state.egressReadyPool = d.ready_pool || [];
     state.accountIds = (creds.accounts || []).map(a => a.account_id);
-    state.poolFilter = 'all';
+    state.poolFilter = 'ready';
+    const accountSelect = $('#eg-ready-account');
+    if (accountSelect) accountSelect.innerHTML = state.accountIds.map(id => `<option value="${esc(id)}">${esc(id)}</option>`).join('');
     $('#eg-kpi').innerHTML = kpi([
       [d.stats?.pool_size||0,'Pool','pool-filter'],
       [d.stats?.usable||0,'Usable','pool-filter'],
@@ -594,7 +612,8 @@ async function loadEgress() {
         <div><span class="name">${esc(l.account_id)}</span> ${badge(l.proxy_state)}</div>
         <span class="meta">${esc(l.public_ip||'?')} · ${esc(l.country||'?')} · ${l.latency_ms}ms · ${l.burns} burns</span></div>`).join('') || '<p class="empty">No lanes.</p>';
     renderPool();
-    // Animation IP spoofing: on montre l'IP de sortie d'une lane, jamais l'IP reelle.
+    renderReadyProxies();
+    // IP spoofing animation: we show the exit IP of a lane, never the real IP.
     const lane0 = (d.lanes||[]).find(l => l.public_ip) || (d.lanes||[])[0] || {};
     if (window.ViaRomaSpoof) {
       window.ViaRomaSpoof.mount($('#spoof-egress'), {
@@ -611,13 +630,14 @@ async function loadEgress() {
   } catch(e) { log('egress: '+e.message,'err'); }
 }
 
-// Rend le pool de proxies avec un filtre actif (les badges sont cliquables).
+// Makes the proxy pool with an active filter (badges are clickable).
 function renderPool() {
   const el = $('#eg-pool'); if (!el) return;
   const all = state.egressPool || [];
   const f = state.poolFilter || 'all';
   let list = all;
-  if (f === 'clean') list = all.filter(p => p.flag_status === 'clean');
+  if (f === 'ready') list = all.filter(p => p.is_usable && p.public_ip && p.last_probe && p.flag_status === 'clean' && !p.burns);
+  else if (f === 'clean') list = all.filter(p => p.flag_status === 'clean');
   else if (f === 'flagged') list = all.filter(p => p.flag_status === 'flagged');
   else if (f === 'untested') list = all.filter(p => (p.flag_status || 'unknown') === 'unknown');
   else if (f === 'usable') list = all.filter(p => p.is_usable);
@@ -626,18 +646,28 @@ function renderPool() {
   el.innerHTML = list.map(p => {
     const fs = p.flag_status || 'unknown';
     const fb = fs === 'clean'
-      ? `<span class="badge ok clickable" data-action="pool-filter" data-status="clean" title="Filtrer sur clean">clean</span>`
+      ? `<span class="badge ok clickable" data-action="pool-filter" data-status="clean" title="Filter on clean">clean</span>`
       : fs === 'flagged'
-        ? `<span class="badge off clickable" data-action="pool-filter" data-status="flagged" title="Filtrer sur flagged">⚠ flagged</span>`
-        : `<span class="badge clickable" data-action="pool-filter" data-status="untested" title="Filtrer sur untested">untested</span>`;
+        ? `<span class="badge off clickable" data-action="pool-filter" data-status="flagged" title="Filter on flagged">⚠ flagged</span>`
+        : `<span class="badge clickable" data-action="pool-filter" data-status="untested" title="Filter on untested">untested</span>`;
     return `<div class="row clickable" data-action="proxy-detail" data-url="${esc(p.url)}">
         <div><span class="name">${esc(p.url)}</span> ${badge(p.state)} ${fb}</div>
         <span class="meta">${esc(p.kind)} · ${p.latency_ms}ms · ${esc(p.country||'?')}${p.public_ip?' · '+esc(p.public_ip):''}</span></div>`;
-  }).join('') || '<p class="empty">Aucun proxy pour ce filtre. Click "clean" / "flagged" pour changer.</p>';
+  }).join('') || '<p class="empty">No proxy for this filter. Click "clean" / "flagged" to change.</p>';
   const c = $('#pool-flag-count');
   if (c) c.textContent = clean + ' clean / ' + flagged + ' flagged' + (f !== 'all' ? ' · filtre: ' + f : '');
   const cnt = $('#pool-count');
   if (cnt) cnt.textContent = list.length + ' / ' + all.length;
+}
+
+function renderReadyProxies() {
+  const el = $('#eg-ready'); if (!el) return;
+  const ready = state.egressReadyPool || [];
+    el.innerHTML = ready.map(p => `<div class="row">
+    <div><span class="name">${esc(p.public_ip)}</span> <span class="badge ok">verified</span></div>
+    <span class="meta">${esc(p.kind)} · ${p.latency_ms}ms · ${esc(p.country || '?')} · ${p.compatible.map(x=>esc(x.replace('_web',''))).join(', ')}</span>
+    <button class="btn primary" data-action="proxy-choose" data-url="${esc(p.url)}">Use this proxy</button>
+  </div>`).join('') || '<p class="empty">No verified proxy yet. Click Scan Worldwide above.</p>';
 }
 
 async function checkScanStatus() {
@@ -666,7 +696,8 @@ async function checkScanStatus() {
 async function loadProviders() {
   if (!tabStill('providers')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
-    <h2>Providers — Worldwide Registry</h2>
+    <h2>Providers — One-Click Connect</h2>
+    <p class="hint">Click <b>Connect</b> on any provider. A browser opens — log in as usual, cookies are captured automatically. That's it.</p>
     <div id="prov-kpi" class="kpi-row"></div>
     <div class="card glass"><h3>🌐 Web Chat Providers</h3><div id="prov-web" class="grid-3"></div></div>
     <div class="card glass"><h3>🔌 API Providers</h3><div id="prov-api" class="grid-3"></div></div>
@@ -684,17 +715,27 @@ async function loadProviders() {
       [full.api_providers.length,'API'],
       [full.desktop.length,'Desktop'],
     ]);
-    const cardHTML = (p) => `<div class="card glass provider-card clickable" data-action="provider-info" data-name="${esc(p.name)}" data-type="${esc(p.type)}" data-url="${esc(p.url||'')}">
-      <div class="card-head"><span>${esc(p.name)}</span> ${p.free_tier?'<span class="badge ok">free</span>':'<span class="badge">paid</span>'}</div>
-      <div class="card-meta">${esc(p.type.toUpperCase())}${p.url?' · '+esc(p.url):''}</div>
-      <div class="card-meta">Needs: ${esc((p.needs||[]).join(', ')||'nothing')}</div>
-      ${p.login_url?`<div class="card-meta">Login: ${esc(p.login_url)}</div>`:''}
-      <div class="btn-row">${btn('🔌 Connect','provider-connect',{data:{name:p.name},primary:true})}${btn('⚙️ Configure','provider-config',{data:{name:p.name}})}</div>
+    const isConnected = (name) => (state.activeProviders||[]).some(p => (p.name||p.label||'') === name && (p.cookie_count||0) > 0);
+    const cardHTML = (p) => {
+      const connected = isConnected(p.name);
+      const providerAccounts = (creds.accounts||[]).filter(a => a.provider === p.key);
+      const accountRows = providerAccounts.length
+        ? `<div class="card-meta">Accounts: ${providerAccounts.map(a => `<button class="btn btn-small" data-action="provider-connect" data-name="${esc(p.name)}" data-account="${esc(a.account_id)}">${esc(a.account_id)} - Connect</button>`).join(' ')}</div>`
+        : '';
+      const addAccountButton = `<button class="btn btn-small" data-action="provider-add-account" data-name="${esc(p.name)}">Add account</button>`;
+      const directButton = `<button class="btn btn-small" data-action="provider-connect-direct" data-name="${esc(p.name)}">Direct (WIP)</button>`;
+      const apiButton = p.type === 'api' ? `<button class="btn btn-small" data-action="provider-api-add" data-name="${esc(p.name)}" data-provider="${esc(p.key)}">API setup (WIP)</button>` : '';
+      return `<div class="card glass provider-card clickable" data-action="provider-info" data-name="${esc(p.name)}" data-type="${esc(p.type)}" data-url="${esc(p.url||'')}">
+      <div class="card-head"><span>${esc(p.name)}</span> ${connected?'<span class="badge ok">✓ connected</span>':p.free_tier?'<span class="badge ok">free</span>':'<span class="badge">paid</span>'}</div>
+      <div class="card-meta">${esc(p.type.toUpperCase())}</div>
+      ${accountRows}${addAccountButton}${directButton}${apiButton}
+      <div class="btn-row">${btn(connected?'🔄 Reconnect':'🔌 Connect','provider-connect',{data:{name:p.name},primary:!connected})}</div>
     </div>`;
+    };
     $('#prov-web').innerHTML = full.web_chats.map(cardHTML).join('');
     $('#prov-api').innerHTML = full.api_providers.map(cardHTML).join('');
     $('#prov-desktop').innerHTML = full.desktop.map(cardHTML).join('');
-    $('#prov-active').innerHTML = (active.providers||[]).map(p=>`<div class="row clickable" data-action="provider-detail" data-name="${esc(p.name||p.label||'')}"><div><span class="name">${esc(p.name||p.label||'?')}</span> ${p.score>50?'<span class="badge ok">'+p.score+'</span>':'<span class="badge off">'+p.score+'</span>'} ${p.egress?'<span class="badge ok">egress</span>':'<span class="badge off">fail-closed</span>'}</div><span class="meta">${esc(p.account_id||'')} · ${esc(p.tls_profile||'')} · ${p.cookie_count||0} cookies</span></div>`).join('') || '<p class="empty">No active adapters.</p>';
+    $('#prov-active').innerHTML = (active.providers||[]).map(p=>`<div class="row clickable" data-action="provider-detail" data-name="${esc(p.name||p.label||'')}"><div><span class="name">${esc(p.name||p.label||'?')}</span> ${p.egress?'<span class="badge ok">egress</span>':'<span class="badge off">no egress</span>'}</div><span class="meta">${p.cookie_count||0} cookies · ${esc(p.tls_profile||'')}</span></div>`).join('') || '<p class="empty">No active adapters yet. Click Connect above.</p>';
   } catch(e) { log('providers: '+e.message,'err'); }
 }
 
@@ -702,10 +743,10 @@ async function loadProviders() {
 async function loadCredentials() {
   $('#tab-content').innerHTML = `<div class="tab-panel">
     <h2>Credentials — Account Management</h2>
-    <div class="btn-row">${btn('➕ Add New Account','cred-show-add',{primary:true})} <button class="btn" data-action="toggle-hide">${state.hideSecrets?'👁 Show Secrets':'🙈 Hide Secrets'}</button></div>
+    <p class="hint">Accounts are created automatically when you click <b>Connect</b> in the Providers tab. You only need to add credentials here if you want headless (non-interactive) mode.</p>
+    <div class="btn-row">${btn('➕ Add Credentials','cred-show-add',{primary:true})} <button class="btn" data-action="toggle-hide">${state.hideSecrets?'👁 Show Secrets':'🙈 Hide Secrets'}</button></div>
     <div id="cred-add-form" style="display:none" class="card glass">
-      <h3>Add New Account</h3>
-      <div class="form-row"><label>Account ID</label><input type="text" id="cred-new-id" placeholder="my-claude-account"></div>
+      <h3>Add Credentials</h3>
       <div class="form-row"><label>Provider</label><select id="cred-new-prov">
         <option value="claude_web">Claude (web)</option><option value="gemini_web">Gemini (web)</option>
         <option value="chatgpt_web">ChatGPT (web)</option><option value="qwen_web">Qwen (web)</option>
@@ -717,11 +758,9 @@ async function loadCredentials() {
         <option value="lepton_web">Lepton AI (web)</option><option value="mistral_web">Mistral Le Chat (web)</option>
         <option value="custom">Custom</option>
       </select></div>
-      <div class="form-row"><label>Account Type</label><select id="cred-new-type"><option value="personal">Personal</option><option value="school">School</option><option value="work">Work</option></select></div>
-      <div class="form-row"><label>Login URL</label><input type="text" id="cred-new-login" placeholder="https://claude.ai/login"></div>
       <div class="form-row"><label>Username / Email</label><input type="text" id="cred-new-user" placeholder="your@email.com"></div>
       <div class="form-row"><label>Password</label><input type="password" id="cred-new-pass" placeholder="••••••••"></div>
-      <div class="btn-row">${btn('✓ Add Account','cred-add-account',{primary:true})} ${btn('Cancel','cred-cancel-add')}</div>
+      <div class="btn-row">${btn('✓ Add','cred-add-account',{primary:true})} ${btn('Cancel','cred-cancel-add')}</div>
     </div>
     <div id="cred-list" class="card-list"></div>
     <div id="cred-edit-form" style="display:none" class="card glass">
@@ -739,7 +778,7 @@ async function loadCredentials() {
       <div class="card-meta">Username: ${a.has_username?'<span class="badge ok">set</span>':'<span class="badge off">not set</span>'} ${state.hideSecrets?'<span class="meta">***</span>':esc(a.username||'')}</div>
       <div class="card-meta">Password: ${a.has_password?'<span class="badge ok">set</span>':'<span class="badge off">not set</span>'}</div>
       <div class="btn-row">${btn('✏ Edit','cred-edit',{data:{id:a.account_id},primary:true})}</div>
-    </div>`).join('') || '<p class="empty">No accounts yet. Click "Add New Account".</p>';
+    </div>`).join('') || '<p class="empty">No accounts yet. Use the Providers tab to connect with 1 click!</p>';
   } catch(e) { log('credentials: '+e.message,'err'); }
 }
 
@@ -754,7 +793,7 @@ async function loadAntiWAF() {
     </div>
     <div class="grid-2">
       <div class="card glass"><h3>📊 Engine Status</h3><div id="aw-status"></div></div>
-      <div class="card glass"><h3>🦊 Camoufox Browser</h3><div id="aw-camoufox"></div></div>
+      <div class="card glass"><h3>🌐 Chrome Browser</h3><div id="aw-browser"></div></div>
     </div>
     <div class="card glass"><h3>⚡ Actions</h3>
       <div class="btn-row">
@@ -780,14 +819,14 @@ async function loadAntiWAF() {
     $('#aw-status').innerHTML = d.stub_mode
       ? `<p style="color:var(--danger)">⚠ curl_cffi unavailable — stub mode</p><p class="hint">Error: ${esc(d.import_error)}</p>`
       : `<p style="color:var(--ok)">✓ curl_cffi ACTIVE — TLS spoofing operational</p><div class="kpi-row" style="margin-top:8px">${kpi([['✅','Spoofing'],['✅','JA3'],['✅','Headers']])}</div>`;
-    // Camoufox
-    $('#aw-camoufox').innerHTML = `<p class="hint">🦊 Camoufox 0.5.8 — browser binary fetched</p><p class="hint">Used for first-login cookie harvesting & challenge bypass</p><div class="btn-row" style="margin-top:8px">${btn('🍪 Start Harvest','antiwaf-harvest',{primary:true})}</div>`;
+    // Playwright + installed Chrome
+    $('#aw-browser').innerHTML = `<p class="hint">🌐 Playwright + Chrome — local browser</p><p class="hint">Used for first-login cookie harvesting and challenge pages</p><div class="btn-row" style="margin-top:8px">${btn('🍪 Start Harvest','antiwaf-harvest',{primary:true})}</div>`;
   } catch(e) { log('antiwaf: '+e.message,'err'); }
 }
 
 // ═══ IDENTITIES ═══
-// Une identite = IP de sortie + empreinte TLS (JA3/JA4) + empreinte navigateur.
-// Stable par compte, distincte d'un compte a l'autre.
+// An identity = Exit IP + TLS fingerprint (JA3/JA4) + browser fingerprint.
+// Stable per account, distinct from one account to another.
 async function loadIdentities() {
   if (!tabStill('identities')) return;
   $('#tab-content').innerHTML = `<div class="tab-panel">
@@ -799,9 +838,9 @@ async function loadIdentities() {
         ${btn('🎲 Assign Missing','identity-assign',{primary:true})}
         ${btn('🔄 Reload','identity-reload')}
       </div>
-      <p class="hint">Chaque compte reçoit une identité <b>stable</b> (IP + JA3/JA4 + UA/locale/fuseau/écran/canvas) et
-      <b>distincte</b> des autres. Une rotation = nouvelle IP <b>et</b> nouvelle empreinte, cookies conservés.
-      C'est ce qui permet de faire tourner plusieurs comptes sans qu'ils soient comptés comme un seul.</p>
+      <p class="hint">Each account receives an identity <b>stable</b> (IP + JA3/JA4 + UA/locale/zone/screen/canvas) and
+      <b>distincte</b> of others. One rotation = new IP <b>et</b> new imprint, cookies kept.
+      This is what allows you to run several accounts without them being counted as one.</p>
     </div>
     <div id="id-list" class="card-list"></div>
   </div>`;
@@ -811,13 +850,13 @@ async function loadIdentities() {
     const distinct = d.distinct_user_agents || 0;
     const total = d.total || 0;
     $('#id-kpi').innerHTML = kpi([
-      [total, 'Comptes'],
-      [distinct, 'Empreintes distinctes'],
+      [total, 'Accounts'],
+      [distinct, 'Distinct fingerprints'],
       [(d.collisions||[]).length, 'Collisions'],
-      ['1:1', 'Compte ↔ Machine'],
+      ['1:1', 'Account ↔ Machine'],
     ]);
     if ((d.collisions||[]).length) {
-      log('⚠ '+(d.collisions||[]).length+' collision(s) d\'identité — deux comptes partagent la même empreinte','err');
+      log('⚠ '+(d.collisions||[]).length+' Identity collision(s) — two accounts share the same fingerprint','err');
     }
     $('#id-list').innerHTML = (d.identities||[]).map(i=>`<div class="row">
       <div>
@@ -939,7 +978,7 @@ function collectConfigData(name) {
   return d;
 }
 
-// ═══ ACTIONS — TOUT passe par ici ═══
+// ═══ ACTIONS — EVERYTHING happens here ═══
 async function doAction(action, el) {
   switch(action) {
     case 'hunter-scan':
@@ -949,7 +988,7 @@ async function doAction(action, el) {
     case 'hunter-filter-medium': case 'hunter-filter-small': {
       state.hunterFilter = action.replace('hunter-filter-', '');
       renderHunterFilters();
-      try { await refreshHunterModels(); log('Filtre: ' + state.hunterFilter + ' — ' + (state.hunterTotal||0) + ' modèles', 'ok'); }
+      try { await refreshHunterModels(); log('Filtre: ' + state.hunterFilter + ' — ' + (state.hunterTotal||0) + ' models', 'ok'); }
       catch(e) { log('hunter: ' + e.message, 'err'); }
       break;
     }
@@ -959,7 +998,7 @@ async function doAction(action, el) {
     // ── Navigation par tuile/badge ────────────────────────────────────
     case 'tab-open': {
       const t = el.dataset.tab;
-      if (!t) { log('Onglet inconnu','err'); break; }
+      if (!t) { log('Unknown tab','err'); break; }
       switchTab(t);
       break;
     }
@@ -978,14 +1017,14 @@ async function doAction(action, el) {
       try {
         const d = await api('/hunter/detail?q=' + encodeURIComponent(id) + '&limit=1');
         const m = (d.models||[])[0];
-        if (!m) { log('Modèle introuvable: '+id,'err'); break; }
+        if (!m) { log('Model not found: '+id,'err'); break; }
         state.hunterModels = d.models||[];
         const md = m.metadata||{};
         const org = md.origin||{label:'Autre'};
-        const ctx = m.context_window ? Number(m.context_window).toLocaleString('fr-FR')+' tokens' : 'non publiée par la source';
+        const ctx = m.context_window ? Number(m.context_window).toLocaleString('fr-FR')+' tokens' : 'not published by source';
         let dl = '';
         if ((md.download_modes||[]).length) {
-          dl = '<h4 style="margin:12px 0 6px;font-size:.82rem;color:#6b2737">Modes de téléchargement (GGUF réels)</h4>'
+          dl = '<h4 style="margin:12px 0 6px;font-size:.82rem;color:#6b2737">Download Modes (Actual GGUF)</h4>'
             + '<div class="drawer-rows">' + md.download_modes.map(f => `
               <div class="drawer-row"><span class="k">${esc(f.quant||'')}</span>
               <span class="v">${f.size_bytes?(f.size_bytes/1048576).toFixed(1)+' Mo':'—'} · <a href="${esc(f.url||'')}" target="_blank" rel="noopener" style="color:var(--accent)">${esc((f.file||'').split('/').pop())}</a></span></div>`).join('') + '</div>';
@@ -993,34 +1032,34 @@ async function doAction(action, el) {
         if (window.RomaDrawer) RomaDrawer.open({
           kicker: 'Live · ' + (m.provider||'?'), title: m.model_id,
           body: RomaDrawer.rows([
-            ['Provider', m.provider], ['Origine du labo', org.label], ['Tier', m.tier],
-            ['Fenêtre de contexte', ctx], ['Valeur de la ctx', md.ctx_source||'aucune source'],
+            ['Provider', m.provider], ['Origin of the lab', org.label], ['Tier', m.tier],
+            ['Context window', ctx], ['Value of ctx', md.ctx_source||'no sources'],
             ['Base', md.base_model||'—'], ['Architecture', md.architecture||'—'],
-            ['Licence', md.license||'—'], ['Téléchargements', md.downloads ?? '—'],
-            ['Créé le', md.created_at||'—'],
+            ['License', md.license||'—'], ['Downloads', md.downloads ?? '—'],
+            ['Created on', md.created_at||'—'],
           ]) + dl,
-          actions: [{label:'✕ Fermer', action:'drawer-close'}]
+          actions: [{label:'✕ Close', action:'drawer-close'}]
         });
       } catch(e) { log('live-model: '+e.message,'err'); }
       break;
     }
     // ── Rafraichissements ──────────────────────────────────────────────
     case 'live-refresh': loadLive(); log('Live rafraichi','ok'); break;
-    case 'security-refresh': loadSecurity(); log('Securite rafraichie','ok'); break;
-    case 'metrics-refresh': loadMetrics(); log('Metriques rafraichies','ok'); break;
-    case 'arch-refresh': loadArchitecture(); log('Graphe rafraichi','ok'); break;
-    case 'models-refresh': loadModels(); log('Modeles rafraichis','ok'); break;
+    case 'security-refresh': loadSecurity(); log('Security refreshed','ok'); break;
+    case 'metrics-refresh': loadMetrics(); log('Refreshed metrics','ok'); break;
+    case 'arch-refresh': loadArchitecture(); log('Graph rafraichi','ok'); break;
+    case 'models-refresh': loadModels(); log('Refreshed models','ok'); break;
     case 'cascade-refresh': loadCascade(); log('Cascade rafraichie','ok'); break;
     case 'identity-rotate-open': switchTab('identities'); break;
-    case 'journal-clear':
+    case 'log-clear':
       state.log = []; renderJournal();
       const lbox = $('#log'); if (lbox) lbox.innerHTML = '';
       log('Journal vide','ok'); break;
-    case 'journal-copy': {
+    case 'log-copy': {
       const txt = state.log.map(l => '['+l.ts+'] '+l.msg).join('\n');
       try {
         if (navigator.clipboard) await navigator.clipboard.writeText(txt);
-        log('Journal copie ('+state.log.length+' lignes)','ok');
+        log('Journal copie ('+state.log.length+' lines)','ok');
       } catch(e) { log('Copie impossible: '+e.message,'err'); }
       break;
     }
@@ -1058,11 +1097,11 @@ async function doAction(action, el) {
     case 'cred-show-add': $('#cred-add-form').style.display = 'block'; break;
     case 'cred-cancel-add': $('#cred-add-form').style.display = 'none'; break;
     case 'cred-add-account': {
-      const id = $('#cred-new-id')?.value?.trim(); const prov = $('#cred-new-prov')?.value;
-      const type = $('#cred-new-type')?.value; const login = $('#cred-new-login')?.value?.trim();
+      const prov = $('#cred-new-prov')?.value;
       const user = $('#cred-new-user')?.value?.trim(); const pass = $('#cred-new-pass')?.value?.trim();
-      if(!id) { log('Account ID required','err'); break; }
-      log('Adding account '+id+'...'); try { const r = await api('/credentials/add',{method:'POST',body:JSON.stringify({account_id:id,provider:prov,account_type:type,login_url:login,username:user,password:pass})}); log('Account added: '+id,'ok'); loadCredentials(); } catch(e) { log('add account: '+e.message,'err'); } break;
+      if(!prov) { log('Provider required','err'); break; }
+      const id = prov + '-' + Date.now().toString(36);
+      log('Adding credentials for '+prov+'...'); try { const r = await api('/credentials/add',{method:'POST',body:JSON.stringify({account_id:id,provider:prov,account_type:'personal',login_url:'',username:user,password:pass})}); log('Credentials added for '+prov,'ok'); loadCredentials(); } catch(e) { log('add credentials: '+e.message,'err'); } break;
     }
     case 'cred-edit':
       state.editingCred = el.dataset.id;
@@ -1084,14 +1123,68 @@ async function doAction(action, el) {
 
     case 'provider-connect': {
       const name = el.dataset.name;
-      log('Connexion à ' + name + '...');
+      const account = el.dataset.account || '';
+      const btnEl = el.closest('button') || el;
+      const origText = btnEl.textContent;
+      btnEl.textContent = '⏳ Opening browser...'; btnEl.disabled = true;
+      log('Opening browser for ' + name + ' — please log in...');
       try {
-        const r = await api('/providers/connect',{method:'POST',body:JSON.stringify({provider:name})});
-        if (r && r.ok === false) { log(name + ': ' + (r.error || r.message || 'échec'), 'err'); }
-        else { log(name + ' connecté ✓ ' + (r && r.message ? '— ' + r.message : ''), 'ok'); }
+        const payload = {provider:name}; if (account) payload.account_id = account;
+        const r = await api('/providers/connect',{method:'POST',body:JSON.stringify(payload)});
+        if (r && r.ok === false) {
+          log(name + ': ' + (r.error || 'failed'), 'err');
+          if (r.setup_required) {
+            log('Action: open Egress → add a working proxy or set VIAROMA_PROXY, then retry.', 'warn');
+            switchTab('egress');
+          }
+        }
+        else { log(name + ' connected ✓ — ' + (r.cookie_count||0) + ' cookies harvested', 'ok'); }
         if (window.RomaDrawer) RomaDrawer.close();
         loadProviders();
       } catch(e) { log('connect: '+e.message,'err'); }
+      finally { btnEl.textContent = origText; btnEl.disabled = false; }
+      break;
+    }
+    case 'provider-connect-direct': {
+      const name = el.dataset.name;
+      if (!confirm('Direct mode uses your local IP. Continue?')) break;
+      log('Opening direct browser for ' + name + '...');
+      try {
+        const r = await api('/providers/connect',{method:'POST',body:JSON.stringify({provider:name,mode:'direct'})});
+        if (r && r.ok === false) log(name + ': ' + (r.error || 'failed'), 'err');
+        else log(name + ' direct session connected (WIP)', 'ok');
+        loadProviders();
+      } catch(e) { log('direct connect: '+e.message,'err'); }
+      break;
+    }
+    case 'provider-api-add': {
+      const provider = el.dataset.provider;
+      const label = el.dataset.name || provider;
+      const account = prompt('Nom du compte API (ex: ' + provider + '-1):');
+      if (!account || !account.trim()) break;
+      const apiKey = prompt('Colle ta clé API officielle pour ' + label + '. Elle sera stockée localement:');
+      if (!apiKey || !apiKey.trim()) break;
+      const endpoint = prompt('Endpoint officiel /v1 (ex: https://api.groq.com/openai/v1):');
+      if (!endpoint || !endpoint.trim()) break;
+      const model = prompt('Modèle par défaut (optionnel):') || '';
+      try {
+        const r = await api('/api-accounts/add',{method:'POST',body:JSON.stringify({provider,account_id:account.trim(),api_key:apiKey.trim(),endpoint:endpoint.trim(),model:model.trim()})});
+        log(label + ' API account saved as WIP; adapter validation remains pending.', r?.ok ? 'ok' : 'err');
+        loadCredentials();
+      } catch(e) { log('API setup: '+e.message,'err'); }
+      break;
+    }
+    case 'provider-add-account': {
+      const name = el.dataset.name;
+      const account = prompt('Nom de ce compte (ex: claude-perso-2):');
+      if (!account || !account.trim()) break;
+      log('Opening browser for new ' + name + ' account...');
+      try {
+        const r = await api('/providers/connect',{method:'POST',body:JSON.stringify({provider:name,account_id:account.trim()})});
+        if (r && r.ok === false) log(name + ': ' + (r.error || 'failed'), 'err');
+        else log(name + ' account ' + account.trim() + ' connected', 'ok');
+        loadProviders();
+      } catch(e) { log('add account: '+e.message,'err'); }
       break;
     }
     case 'provider-config': {
@@ -1100,26 +1193,29 @@ async function doAction(action, el) {
       state.cfgActive = 'accounts.yaml'; switchTab('config'); break;
     }
 
+    case 'goto-providers':
+      switchTab('providers'); break;
+
     case 'antiwaf-refresh': log('Refreshing Anti-WAF status...'); loadAntiWAF(); break;
     case 'antiwaf-test': {
       log('Testing TLS spoof (curl_cffi → https://tls.peet.ws/api/all)...');
       try { const r = await api('/antiwaf/test',{method:'POST',body:JSON.stringify({})});
-        if(!r.ok) { log('TLS test: '+(r.error||'echec'),'err'); break; }
+        if(!r.ok) { log('TLS test: '+(r.error||'failed'),'err'); break; }
         log('TLS spoof test: '+r.tls_version+' · JA3='+r.ja3_hash+' · IP='+r.ip,'ok');
         if (r.diff) log('JA3 differs from real: ✓ spoof working','ok');
       } catch(e) { log('TLS test: '+e.message,'err'); } break;
     }
     case 'antiwaf-harvest': {
-      log('Starting Camoufox cookie harvest (headless browser)...');
+      log('Starting Chrome cookie harvest (browser)...');
       try { const r = await api('/antiwaf/harvest',{method:'POST',body:JSON.stringify({})});
-        if(!r.ok) { log('harvest: '+(r.error||'echec'),'err'); break; }
+        if(!r.ok) { log('harvest: '+(r.error||'failed'),'err'); break; }
         log('Harvest: '+r.cookies+' cookies from '+r.url+' ('+r.provider+')','ok');
       } catch(e) { log('harvest: '+e.message,'err'); } break;
     }
     case 'antiwaf-rotate': {
       log('Rotating egress lane + TLS profile...');
       try { const r = await api('/antiwaf/rotate',{method:'POST',body:JSON.stringify({})});
-        if(!r.ok) { log('rotate: '+(r.error||'echec'),'err'); break; }
+        if(!r.ok) { log('rotate: '+(r.error||'failed'),'err'); break; }
         log('Rotated to: '+r.active_profile+' ('+r.count+' lane(s))','ok'); loadAntiWAF();
       } catch(e) { log('rotate: '+e.message,'err'); } break;
     }
@@ -1127,7 +1223,7 @@ async function doAction(action, el) {
       const profile = el.dataset.profile;
       log('Activating TLS profile: '+profile+'...');
       try { const r = await api('/antiwaf/activate',{method:'POST',body:JSON.stringify({profile})});
-        if(!r.ok) { log('activate: '+(r.error||'echec'),'err'); break; }
+        if(!r.ok) { log('activate: '+(r.error||'failed'),'err'); break; }
         log('Active TLS profile: '+r.active_profile+' ('+r.count+' lane(s))','ok'); loadAntiWAF();
       } catch(e) { log('activate: '+e.message,'err'); } break;
     }
@@ -1136,14 +1232,14 @@ async function doAction(action, el) {
       const id = el.dataset.id;
       log('Rotating identity for '+id+' (new IP + new fingerprint, cookies kept)...');
       try { const r = await api('/identity/rotate',{method:'POST',body:JSON.stringify({account_id:id,reason:'dashboard_rotate'})});
-        if(!r.ok) { log('rotate: '+(r.error||'echec'),'err'); break; }
+        if(!r.ok) { log('rotate: '+(r.error||'failed'),'err'); break; }
         log('Rotated '+id+': '+r.identity_id+' · '+r.tls_profile+' · '+(r.egress_ip||r.egress_proxy||'no egress'),'ok');
         loadIdentities();
       } catch(e) { log('rotate: '+e.message,'err'); } break;
     }
     case 'identity-assign': {
       try { const r = await api('/identity/assign',{method:'POST',body:JSON.stringify({})});
-        log('Identities: '+r.total+' compte(s) · '+r.identities+' identité(s)','ok'); loadIdentities();
+        log('Identities: '+r.total+' account(s) · '+r.identities+' identity(ies)','ok'); loadIdentities();
       } catch(e) { log('assign: '+e.message,'err'); } break;
     }
     case 'identity-reload': loadIdentities(); break;
@@ -1168,18 +1264,18 @@ async function doAction(action, el) {
     case 'model-detail':
     case 'hunter-model-info': {
       const m = (state.hunterModels||[]).find(x => x.model_id === el.dataset.model);
-      if (!m) { log('Modèle introuvable: '+el.dataset.model,'err'); break; }
+      if (!m) { log('Model not found: '+el.dataset.model,'err'); break; }
       const md = m.metadata || {};
       const org = md.origin || {label:'Autre', code:'other'};
-      // Fenetre de contexte: la valeur REELLE si la source l'a publiee,
-      // sinon on l'assume: "non publiee". Jamais un 32768 fabrique.
+      // Context window: the REAL value if the source published it,
+      // otherwise we assume it: “unpublished”. Never made a 32768.
       const ctx = m.context_window
         ? Number(m.context_window).toLocaleString('fr-FR') + ' tokens'
-        : 'non publiée par la source';
-      const ctxSrc = md.ctx_source ? ('source: ' + md.ctx_source) : 'aucune source';
+        : 'not published by source';
+      const ctxSrc = md.ctx_source ? ('source: ' + md.ctx_source) : 'no sources';
       let dl = '';
       if ((md.download_modes||[]).length) {
-        dl = '<h4 style="margin:12px 0 6px;font-size:.82rem;color:#6b2737">Modes de téléchargement (GGUF réels)</h4>'
+        dl = '<h4 style="margin:12px 0 6px;font-size:.82rem;color:#6b2737">Download Modes (Actual GGUF)</h4>'
           + '<div class="drawer-rows">' + md.download_modes.map(f => `
             <div class="drawer-row">
               <span class="k">${esc(f.quant||'')}</span>
@@ -1188,32 +1284,32 @@ async function doAction(action, el) {
       }
       if (window.RomaDrawer) {
         RomaDrawer.open({
-          kicker: 'Modèle gratuit · ' + (m.provider||'?'),
+          kicker: 'Free template · ' + (m.provider||'?'),
           title: m.model_id,
           body: RomaDrawer.rows([
-            ['Identifiant', m.model_id],
+            ['Identifier', m.model_id],
             ['Provider', m.provider],
-            ['Origine du labo', org.label],
+            ['Origin of the lab', org.label],
             ['Tier', m.tier],
-            ['Fenêtre de contexte', ctx],
-            ['Valeur de la ctx', ctxSrc],
+            ['Context window', ctx],
+            ['Value of ctx', ctxSrc],
             ['Base', md.base_model || '—'],
             ['Architecture', md.architecture || '—'],
-            ['Licence', md.license || '—'],
+            ['License', md.license || '—'],
             ['Actif', m.is_active ? 'oui' : 'non'],
-            ['Téléchargements', md.downloads !== undefined ? md.downloads : '—'],
+            ['Downloads', md.downloads !== undefined ? md.downloads : '—'],
             ['Likes', md.likes !== undefined ? md.likes : '—'],
-            ['Nom affiché', md.name || '—'],
+            ['Display Name', md.name || '—'],
             ['Source', md.source || '—'],
-            ['Vu la dernière fois', fmtAgo(m.last_verified)],
+            ['Last seen', fmtAgo(m.last_verified)],
           ]) + dl
           + (md.download ? '<div class="drawer-code">' + esc(md.download) + '</div>' : '')
-          + '<div class="drawer-code">curl http://127.0.0.1:8000/v1/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -d \'{"model":"auto","messages":[{"role":"user","content":"ping"}]}\'</div>' +
-          '<p class="drawer-note">ViaRoma a découvert ce modèle automatiquement et l\'a classé par tier. Le tier « frontier » = modèle de qualité maximale, gratuit sur sa source.</p>',
+          + '<div class="drawer-code">curl http://127.0.0.1:8000/v1/chat/completions \\\n -H "Content-Type: application/json" \\\n -d \'{"model":"auto","messages":[{"role":"user","content":"ping"}]}\'</div>' +
+          '<p class="drawer-note">ViaRoma discovered this model automatically and classified it by tier. The “frontier” tier = maximum quality model, free on its source.</p>',
           actions: [
-            { label: '📋 Copier l\'ID', action: 'copy-text', data: { text: m.model_id } },
-            { label: '🔍 Filtrer par provider', action: 'hunter-search-provider', data: { provider: m.provider } },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '📋 Copy ID', action: 'copy-text', data: { text: m.model_id } },
+            { label: '🔍 Filter by provider', action: 'hunter-search-provider', data: { provider: m.provider } },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1234,20 +1330,20 @@ async function doAction(action, el) {
           body: RomaDrawer.rows([
             ['Type', p ? p.type : '—'],
             ['URL', p ? (p.url||'—') : '—'],
-            ['Tier gratuit', p ? (p.free_tier ? 'oui' : 'non') : '—'],
-            ['Credentials requis', p ? ((p.needs||[]).join(', ')||'aucun') : '—'],
-            ['URL de login', p ? (p.login_url||'—') : '—'],
-            ['Compte actif', active ? active.account_id : 'aucun'],
-            ['Egress', active ? (active.egress ? 'lane active' : 'AUCUN — fail-closed') : '—'],
-            ['Profil TLS', active ? active.tls_profile : '—'],
-            ['Empreinte navigateur', active ? active.user_agent : '—'],
-            ['Cookies en jar', active ? active.cookie_count : '—'],
-            ['Score de santé', active ? active.score : '—'],
-          ]) + '<p class="drawer-note">Un provider sans egress n\'est jamais appelé : fail-closed, l\'IP de la machine ne sort pas.</p>',
+            ['Free tier', p ? (p.free_tier ? 'oui' : 'non') : '—'],
+            ['Required credentials', p ? ((p.needs||[]).join(', ')||'none') : '—'],
+            ['Login URL', p ? (p.login_url||'—') : '—'],
+            ['Active account', active ? active.account_id : 'none'],
+            ['Egress', active ? (active.egress ? 'lane active' : 'NONE — fail-closed') : '—'],
+            ['TLS profile', active ? active.tls_profile : '—'],
+            ['Browser fingerprint', active ? active.user_agent : '—'],
+            ['Cookies in jar', active ? active.cookie_count : '—'],
+            ['Health Score', active ? active.score : '—'],
+          ]) + '<p class="drawer-note">A provider without egress is never called: fail-closed, the IP of the machine is not output.</p>',
           actions: [
             { label: '🔌 Connecter', action: 'provider-connect', data: { name }, kind: 'primary' },
-            { label: '⚙️ Configurer', action: 'provider-config', data: { name } },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '⚙️ Configure', action: 'provider-config', data: { name } },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1258,7 +1354,7 @@ async function doAction(action, el) {
       const url = el.dataset.url;
       const p = (state.egressPool||[]).find(x => x.url === url);
       if (!p) { log('Proxy introuvable','err'); break; }
-      // la liste des comptes est rechargee a l'ouverture: elle peut avoir change
+      // the list of accounts is reloaded upon opening: it may have changed
       let accounts = state.accountIds || [];
       if (!accounts.length) {
         try { const c = await api('/credentials/list'); accounts = (c.accounts||[]).map(a=>a.account_id); state.accountIds = accounts; }
@@ -1272,22 +1368,22 @@ async function doAction(action, el) {
             ['URL', p.url],
             ['Type', p.kind],
             ['Source', p.source],
-            ['État', p.state],
+            ['State', p.state],
             ['IP publique', p.public_ip || '—'],
             ['Pays', p.country || '—'],
             ['Latence', p.latency_ms + ' ms'],
             ['Utilisable', p.is_usable ? 'oui' : 'non'],
             ['Flag check', p.flag_status || 'unknown'],
-            ['Contrôles', Object.keys(p.flag_checks||{}).length ? Object.entries(p.flag_checks).map(([k,v])=>k+'='+v).join(', ') : '—'],
+            ['Checks', Object.keys(p.flag_checks||{}).length ? Object.entries(p.flag_checks).map(([k,v])=>k+'='+v).join(', ') : '—'],
           ]) +
-          '<p class="drawer-note">Attribue ce proxy à un compte pour lui donner une IP de sortie dédiée.</p>' +
-          '<div class="form-row" style="margin-top:8px"><label>Compte</label><select id="assign-account">' +
-            (accounts.length ? accounts.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('') : '<option value="">(aucun compte configuré)</option>') +
+          '<p class="drawer-note">Assigns this proxy to an account to give it a dedicated egress IP.</p>' +
+          '<div class="form-row" style="margin-top:8px"><label>Account</label><select id="assign-account">' +
+            (accounts.length ? accounts.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('') : '<option value="">(no account configured)</option>') +
           '</select></div>',
           actions: [
-            { label: '🔗 Attribuer au compte', action: 'proxy-assign', data: { url }, kind: 'primary' },
-            { label: '🩺 Tester le pool', action: 'proxy-test' },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '🔗 Assign to account', action: 'proxy-assign', data: { url }, kind: 'primary' },
+            { label: '🩺 Test the pool', action: 'proxy-test' },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1303,23 +1399,23 @@ async function doAction(action, el) {
           kicker: 'Lane egress · ' + id,
           title: id,
           body: RomaDrawer.rows([
-            ['Compte', l.account_id],
+            ['Account', l.account_id],
             ['Proxy', l.proxy_url || '—'],
             ['Type', l.proxy_kind || '—'],
-            ['IP de sortie', l.public_ip || '—'],
+            ['Exit IP', l.public_ip || '—'],
             ['Pays', l.country || '—'],
             ['Latence', l.latency_ms + ' ms'],
-            ['État proxy', l.proxy_state],
-            ['État lane', l.lane_state],
+            ['Proxy state', l.proxy_state],
+            ['Lane State', l.lane_state],
             ['Burns', l.burns],
-            ['Échecs', l.failures],
+            ['Failures', l.failures],
             ['Dernier probe', l.last_probe ? fmtAgo(l.last_probe) : '—'],
-          ]) + '<p class="drawer-note">Brûler la lane remplace l\'IP de sortie ET fait tourner l\'empreinte du compte : les cookies de session sont conservés.</p>',
+          ]) + '<p class="drawer-note">Burning the lane replaces the exit IP AND rotates the account fingerprint: session cookies are retained.</p>',
           actions: [
-            { label: '🔥 Brûler la lane', action: 'lane-burn', data: { id }, kind: 'danger' },
-            { label: '🧬 Rotation d\'identité', action: 'lane-identity', data: { id }, kind: 'primary' },
+            { label: '🔥 Burn the lane', action: 'lane-burn', data: { id }, kind: 'danger' },
+            { label: '🧬 Identity rotation', action: 'lane-identity', data: { id }, kind: 'primary' },
             { label: '🔄 Rebind', action: 'lane-rebind', data: { id } },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1343,17 +1439,17 @@ async function doAction(action, el) {
       const burned = lanes.filter(l => (l.burns||0) > 0);
       if (window.RomaDrawer) {
         RomaDrawer.open({
-          kicker: 'Historique', title: burned.length + ' lane(s) brûlée(s)',
+          kicker: 'Historique', title: burned.length + ' burnt lane(s)',
           body: burned.length ? RomaDrawer.rows(burned.map(l => [l.account_id, l.burns + ' burn(s) · ' + (l.public_ip||'—')])) :
-            '<p class="drawer-note">Aucune lane brûlée pour l\'instant. Une lane est brûlée sur 403 / 429 / challenge.</p>',
-          actions: [{ label: '✕ Fermer', action: 'drawer-close' }],
+            '<p class="drawer-note">No lanes burned yet. A lane is burned on 403 / 429 / challenge.</p>',
+          actions: [{ label: '✕ Close', action: 'drawer-close' }],
         });
       }
       break;
     }
     case 'copy-text': {
       const txt = el.dataset.text || '';
-      try { await navigator.clipboard.writeText(txt); log('Copié: ' + txt, 'ok'); }
+      try { await navigator.clipboard.writeText(txt); log('Copy: ' + txt, 'ok'); }
       catch(e) { log('Copie impossible: ' + e.message, 'err'); }
       break;
     }
@@ -1369,22 +1465,34 @@ async function doAction(action, el) {
     case 'proxy-assign': {
       const url = el.dataset.url;
       const acc = $('#assign-account')?.value || '';
-      if (!acc) { log('Aucun compte sélectionné', 'err'); break; }
+      if (!acc) { log('No account selected', 'err'); break; }
       try {
         const r = await api('/egress/assign', {method:'POST', body: JSON.stringify({account_id: acc, url})});
-        if (!r.ok) { log('Attribution: ' + (r.error||'échec'), 'err'); break; }
-        log('Proxy attribué à ' + acc, 'ok');
+        if (!r.ok) { log('Attribution: ' + (r.error||'failed'), 'err'); break; }
+        log('Proxy assigned to ' + acc, 'ok');
         if (window.RomaDrawer) RomaDrawer.close();
         loadEgress();
       } catch(e) { log('assign: ' + e.message, 'err'); }
       break;
     }
+    case 'proxy-choose': {
+      const url = el.dataset.url;
+      const acc = $('#eg-ready-account')?.value || state.accountIds?.[0] || '';
+      if (!acc) { log('Add an account first', 'err'); break; }
+      try {
+        const r = await api('/egress/assign', {method:'POST', body: JSON.stringify({account_id: acc, url})});
+        if (!r.ok) { log('Proxy: ' + (r.error || 'failed'), 'err'); break; }
+        log('Verified proxy selected for ' + acc + '. You can now click Connect.', 'ok');
+        loadEgress();
+      } catch(e) { log('proxy: ' + e.message, 'err'); }
+      break;
+    }
     case 'proxy-test': {
-      log('Test du pool de proxies...');
+      log('Testing the proxy pool...');
       try {
         const r = await api('/egress/rotate', {method:'POST', body: JSON.stringify({})});
-        if (!r.ok) { log('Test: ' + (r.error||'échec'), 'err'); break; }
-        log('Pool sondé: ' + (r.via||'ok'), 'ok');
+        if (!r.ok) { log('Test: ' + (r.error||'failed'), 'err'); break; }
+        log('Pool surveyed: ' + (r.via||'ok'), 'ok');
         loadEgress();
       } catch(e) { log('test: ' + e.message, 'err'); }
       break;
@@ -1393,8 +1501,8 @@ async function doAction(action, el) {
       const id = el.dataset.id;
       try {
         const r = await api('/egress/burn', {method:'POST', body: JSON.stringify({account_id:id, reason:'dashboard_burn'})});
-        if (!r.ok) { log('Burn: ' + (r.error||'échec'), 'err'); break; }
-        log('Lane ' + id + ' brûlée — IP et empreinte tournées, cookies conservés', 'ok');
+        if (!r.ok) { log('Burn: ' + (r.error||'failed'), 'err'); break; }
+        log('Lane ' + id + ' burned — IP and fingerprint rotated, cookies kept', 'ok');
         if (window.RomaDrawer) RomaDrawer.close();
         loadEgress();
       } catch(e) { log('burn: ' + e.message, 'err'); }
@@ -1403,8 +1511,8 @@ async function doAction(action, el) {
     case 'lane-rebind': {
       try {
         const r = await api('/egress/rotate', {method:'POST', body: JSON.stringify({})});
-        if (!r.ok) { log('Rebind: ' + (r.error||'échec'), 'err'); break; }
-        log('Lanes rebindées', 'ok');
+        if (!r.ok) { log('Rebind: ' + (r.error||'failed'), 'err'); break; }
+        log('Rebinded lanes', 'ok');
         if (window.RomaDrawer) RomaDrawer.close();
         loadEgress();
       } catch(e) { log('rebind: ' + e.message, 'err'); }
@@ -1414,8 +1522,8 @@ async function doAction(action, el) {
       const id = el.dataset.id;
       try {
         const r = await api('/identity/rotate', {method:'POST', body: JSON.stringify({account_id:id, reason:'dashboard_lane'})});
-        if (!r.ok) { log('Rotation: ' + (r.error||'échec'), 'err'); break; }
-        log('Identité ' + id + ' tournée: ' + (r.identity_id||'') + ' · ' + (r.tls_profile||''), 'ok');
+        if (!r.ok) { log('Rotation: ' + (r.error||'failed'), 'err'); break; }
+        log('Identify ' + id + ' tour: ' + (r.identity_id||'') + ' · ' + (r.tls_profile||''), 'ok');
         if (window.RomaDrawer) RomaDrawer.close();
         loadEgress();
       } catch(e) { log('rotation: ' + e.message, 'err'); }
@@ -1429,16 +1537,16 @@ async function doAction(action, el) {
         RomaDrawer.open({
           kicker: 'Circuit breaker', title: name,
           body: RomaDrawer.rows([
-            ['État', m.state || '—'],
-            ['Taux de succès', ((m.success_rate||0)*100).toFixed(1) + ' %'],
-            ['Requêtes', m.total_requests ?? '—'],
-            ['Échecs consécutifs', m.consecutive_failures ?? '—'],
-            ['Latence moyenne', (m.avg_latency_ms ?? 0) + ' ms'],
-            ['Rate-limité jusqu\'à', m.rate_limited_until ? new Date(m.rate_limited_until*1000).toLocaleTimeString('fr-FR') : '—'],
-          ]) + '<p class="drawer-note">Un provider en « open » est écarté de la cascade : le circuit breaker le met en quarantaine après 5 échecs, ou immédiatement sur un 429.</p>',
+            ['State', m.state || '—'],
+            ['Success rate', ((m.success_rate||0)*100).toFixed(1) + ' %'],
+            ['Requests', m.total_requests ?? '—'],
+            ['Consecutive failures', m.consecutive_failures ?? '—'],
+            ['Average latency', (m.avg_latency_ms ?? 0) + ' ms'],
+            ['Rate-limited up to', m.rate_limited_until ? new Date(m.rate_limited_until*1000).toLocaleTimeString('fr-FR') : '—'],
+          ]) + '<p class="drawer-note">An “open” provider is excluded from the cascade: the circuit breaker places it in quarantine after 5 failures, or immediately on a 429.</p>',
           actions: [
-            { label: '⚡ Réarmer ce provider', action: 'cascade-reset-one', data: { name }, kind: 'primary' },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '⚡ Reset this provider', action: 'cascade-reset-one', data: { name }, kind: 'primary' },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1447,7 +1555,7 @@ async function doAction(action, el) {
     case 'cascade-reset-one': {
       try {
         const r = await api('/cascade/reset', {method:'POST', body: JSON.stringify({provider: el.dataset.name})});
-        log('Breaker ' + el.dataset.name + ' réarmé (' + (r.reset ?? '?') + ')', 'ok');
+        log('Breaker ' + el.dataset.name + ' rearmed (' + (r.reset ?? '?') + ')', 'ok');
         if (window.RomaDrawer) RomaDrawer.close();
         loadCascade();
       } catch(e) { log('reset: ' + e.message, 'err'); }
@@ -1461,21 +1569,21 @@ async function doAction(action, el) {
         RomaDrawer.open({
           kicker: 'Session · ' + (s.provider||''), title: s.session_id,
           body: RomaDrawer.rows([
-            ['Compte', s.account_id],
+            ['Account', s.account_id],
             ['Provider', s.provider],
-            ['État', s.state],
+            ['State', s.state],
             ['Saine', s.is_healthy ? 'oui' : 'non'],
-            ['Requêtes', s.request_count],
-            ['Erreurs', s.error_count],
+            ['Requests', s.request_count],
+            ['Errors', s.error_count],
             ['Challenges', s.challenge_count],
-            ['Créée', fmtAgo(s.created_at)],
-            ['Dernière utilisation', fmtAgo(s.last_used)],
+            ['Created', fmtAgo(s.created_at)],
+            ['Last used', fmtAgo(s.last_used)],
             ['Rate-limit reset', s.rate_limit_reset_at ? new Date(s.rate_limit_reset_at*1000).toLocaleTimeString('fr-FR') : '—'],
-          ]) + '<p class="drawer-note">Le jar de cookies de cette session est le plus récent : c\'est lui qui est fusionné dans le contexte de routage du compte.</p>',
+          ]) + '<p class="drawer-note">The cookie jar for this session is the most recent: it is the one that is merged into the account routing context.</p>',
           actions: [
-            { label: '📱 Tourner la session', action: 'rotate-session', kind: 'primary' },
-            { label: '🔥 Brûler la lane', action: 'lane-burn', data: { id: s.account_id }, kind: 'danger' },
-            { label: '✕ Fermer', action: 'drawer-close' },
+            { label: '📱Turn session', action: 'rotate-session', kind: 'primary' },
+            { label: '🔥 Burn the lane', action: 'lane-burn', data: { id: s.account_id }, kind: 'danger' },
+            { label: '✕ Close', action: 'drawer-close' },
           ],
         });
       }
@@ -1485,9 +1593,9 @@ async function doAction(action, el) {
     default: log('Unknown action: '+action,'err');  }
 }
 
-// ═══ CHARTS — VRAIES métriques ═══
-// Chaque graphique est isole: un canvas masque (panel droit en display:none)
-// ne doit pas empecher les autres de se dessiner.
+// ═══ CHARTS — REAL metrics ═══
+// Each graphic is isolated: a canvas mask (right panel in display:none)
+// should not prevent others from emerging.
 function renderRightPanel() {
   const safe = (fn) => { try { fn(); } catch(e) { console.warn('[charts]', e && e.message); } };
   const st = state.hunterStats;
@@ -1505,8 +1613,8 @@ function renderRightPanel() {
   if (state.cascadeProviders && typeof Charts !== 'undefined') {
     safe(() => {
       const entries = Object.entries(state.cascadeProviders);
-      // Palette de l'Empire: colonne en travertin quand le circuit est ferme,
-      // en pourpre tyrien quand il est ouvert (pas de vert/rouge moderne).
+      // Palette of the Empire: travertine column when the circuit is closed,
+      // in Tyrian purple when open (not modern green/red).
       Charts.bar3d('chart-breakers', entries.slice(0,8).map(([n,m])=>({
         label:n.replace(' (web)','').slice(0,12),
         val: Math.max(m.total_requests||0, m.consecutive_failures||0, 1),
@@ -1537,9 +1645,9 @@ async function loadHealth() {
 // ═══ BOOT ═══
 function boot() {
   $$('.nav-tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
-  log('Dashboard ViaRoma pret — routage fail-closed, IP locale jamais transmise', 'ok');
+  log('Dashboard ViaRoma ready — routing fail-closed, local IP never transmitted', 'ok');
   loadHealth();
-  switchTab('overview');
+  switchTab('providers');
   setInterval(() => { const el = $('#foot-ts'); if (el) el.textContent = new Date().toLocaleTimeString('en-US'); }, 1000);
   setInterval(async () => { if (state.activeTab === 'overview') await loadOverview(); renderRightPanel(); }, 5000);
   setTimeout(() => { renderRightPanel(); }, 2000);

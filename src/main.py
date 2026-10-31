@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from src.core.cascade import CascadeManager, FallbackConfig
 from src.schemas import ChatCompletionRequest
 from src.hunter.hunter import FreeHunter
-from src.proxy.egress_lanes import EgressLanePool
+from src.proxy.egress_lanes import create_egress_pool
 from src.proxy.identity import IdentityManager
 from src.sessions.session_manager import SessionManager
 from src.dashboard.routes import router as dashboard_router
@@ -17,9 +17,9 @@ from src.dashboard import config_io
 
 app = FastAPI(title="Roma - Infinite Frontier Proxy")
 
-# Pool egress: IP de sortie jetable, lanes persistantes 1:1 par compte.
-egress_pool = EgressLanePool(lanes_path="data/egress_lanes.json")
-# Identite de navigateur par compte (UA, locale, fuseau, ecran, canvas).
+# Pool egress: Disposable exit IP, persistent lanes 1:1 per account.
+egress_pool = create_egress_pool()
+# Browser identity by account (UA, local, zone, screen, canvas).
 identities = IdentityManager(path="data/identities.json")
 sessions = SessionManager(egress_pool=egress_pool, identity_manager=identities)
 cascade = CascadeManager(
@@ -29,19 +29,19 @@ cascade = CascadeManager(
 )
 hunter = FreeHunter()
 
-# Composants exposes au dashboard (lecture seule via app.state).
+# Components exposed to the dashboard (read only via app.state).
 app.state.egress_pool = egress_pool
 app.state.identities = identities
 app.state.sessions = sessions
 app.state.cascade = cascade
 app.state.hunter = hunter
 
-# --- Dashboard ViaRoma (UI de pilotage) ---
+# --- ViaRoma Dashboard (control UI) ---
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "dashboard", "static")
 
 
 def _chunk_text(chunk) -> str:
-    """Extrait le texte d'un ChatChunk (delta.content)."""
+    """Extract text from a ChatChunk (delta.content)."""
     try:
         choices = getattr(chunk, "choices", None) or []
         if not choices:
@@ -53,27 +53,27 @@ def _chunk_text(chunk) -> str:
 
 app.include_router(dashboard_router)
 
-# Modeles 3D du Colisee (GLB). Ils sont volumineux (8 Mo / 24 Mo): ils ne
-# sont PAS dans le depot, ils sont telecharges par scripts/fetch_3d_assets.py
-# et servis depuis data/models/. Le dashboard tombe sur une version
-# procedurale si le fichier est absent.
-# ATTENTION: cette route doit etre declaree AVANT le mount /dashboard/static,
-# sinon StaticFiles intercepte le chemin et renvoie 404.
+# 3D models of the Coliseum (GLB). They are large (8 MB / 24 MB): they do not
+# are NOT in the repository, they are uploaded by scripts/fetch_3d_assets.py
+# and served from data/models/. The dashboard falls on a version
+# procedural if the file is missing.
+# WARNING: this route must be declared BEFORE mount /dashboard/static,
+# otherwise StaticFiles intercepts the path and returns 404.
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "models")
 
 
 @app.get("/dashboard/static/models/{filename}", include_in_schema=False)
 async def serve_3d_model(filename: str):
-    """Sert un modele 3D local (colosseum-today.glb / colosseum-ad-80.glb).
+    """Serves a local 3D model (colosseum-today.glb / colosseum-ad-80.glb).
 
-    Serveur de fichiers local uniquement: aucune URL distante, aucune fuite.
+    Local file server only: no remote URLs, no leaks.
     """
     safe = os.path.basename(filename)
     if not safe.lower().endswith(".glb"):
         raise HTTPException(status_code=400, detail="format non servi")
     path = os.path.join(MODELS_DIR, safe)
     if not os.path.isfile(path):
-        raise HTTPException(status_code=404, detail="modele absent: lance scripts/fetch_3d_assets.py")
+        raise HTTPException(status_code=404, detail="missing model: launch scripts/fetch_3d_assets.py")
     return FileResponse(path, media_type="model/gltf-binary")
 
 
@@ -91,22 +91,22 @@ async def dashboard_index():
 
 @app.on_event("startup")
 async def startup_event():
-    # Squelettes de config manquants (n ecrase jamais un fichier existant).
+    # Missing config skeletons (never overwrites an existing file).
     created = config_io.ensure_defaults()
     if created:
         print("[dashboard] config creee:", ",".join(created))
-    # Egress: charge les lanes persistees AVANT la cascade. Sans lane, un
-    # compte n'a pas d'IP de sortie -> il est ecarte (fail-closed).
+    # Egress: Loads persisted lanes BEFORE the cascade. Without lane, one
+    # account has no exit IP -> it is failed (fail-closed).
     egress_pool.load()
     egress_pool.start(interval_seconds=120)
-    # Sessions: comptes + sessions persistees. Pre requis du burn de lane
-    # (sans comptes charges, provider_accounts reste vide et aucun burn n'a lieu).
+    # Sessions: accounts + persisted sessions. Lane burn prerequisites
+    # (without charge accounts, provider_accounts remains empty and no burn takes place).
     try:
         await sessions.initialize()
-        print("[sessions] comptes charges:", len(sessions.accounts))
+        print("[sessions] accounts loaded:", len(sessions.accounts))
     except Exception as e:
         print("[sessions] init impossible:", e)
-    # Contextes de routage: IP (lane) + TLS (identite) + UA + cookies du compte.
+    # Routing contexts: IP (lane) + TLS (identity) + UA + account cookies.
     try:
         active = cascade.refresh()
         print("[cascade] providers actifs:", active)
@@ -122,11 +122,11 @@ async def shutdown_event():
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: ChatCompletionRequest):
-    """Point d'entree OpenAI-compatible.
+    """OpenAI-compatible entry point.
 
-    Le PREMIER chunk est consomme AVANT d'ouvrir la reponse : si la cascade
-    echoue (tous providers down), on renvoie un vrai 503 JSON au lieu d'un
-    200 a corps vide (la reponse etait deja_started -> exception Starlette).
+    The FIRST chunk is consumed BEFORE opening the response: if the cascade
+    fails (all providers down), we return a real 503 JSON instead of a
+    200 with empty body (the response was already_started -> Starlette exception).
     """
     stream = request.stream is not False
     agen = cascade.execute_with_fallback(request)
@@ -143,7 +143,7 @@ async def chat_completions(request: ChatCompletionRequest):
         await agen.aclose()
         raise HTTPException(
             status_code=503,
-            detail="Tous les endpoints frontier ont echoue. Dernier log: " + str(e),
+            detail="All border endpoints have failed. Last log: " + str(e),
         )
 
     if not stream:
@@ -177,7 +177,7 @@ async def chat_completions(request: ChatCompletionRequest):
             async for chunk in agen:
                 yield f"data: {chunk.model_dump_json()}\n\n"
         except Exception as e:
-            # La reponse est deja ouverte: l'erreur part dans le flux SSE.
+            # The response is already open: the error goes into the SSE flow.
             yield "data: " + json.dumps(
                 {"error": {"message": str(e), "type": "upstream_error"}}
             ) + "\n\n"
@@ -190,12 +190,12 @@ async def egress_stats():
     return egress_pool.get_stats()
 
 def main() -> int:
-    """Point d'entree console: `via-roma` (API HTTP + dashboard Roma Aeterna)."""
+    """Console entry point: `via-roma` (API HTTP + dashboard Roma Aeterna)."""
     import uvicorn
-    # Par defaut on n'ecoute QUE sur la boucle locale: le dashboard expose
-    # l'etat de routage (comptes, lanes, IP de sortie) et ne doit pas etre
-    # expose au reseau local. VIAROMA_HOST=0.0.0.0 reste possible si l'utilisateur
-    # le veut explicitement.
+    # By default we ONLY listen on the local loop: the dashboard exposes
+    # routing state (accounts, lanes, exit IP) and should not be
+    # exposed to the local network. VIAROMA_HOST=0.0.0.0 remains possible if the user
+    # explicitly wants it.
     host = os.environ.get("VIAROMA_HOST", "127.0.0.1")
     port = int(os.environ.get("VIAROMA_PORT", "8000"))
     uvicorn.run("src.main:app", host=host, port=port, reload=False)

@@ -50,7 +50,7 @@
        L96 150 C95 140 93 126 92 112 C90 92 87 74 87 62 C87 53 92 46 100 46 Z"/>
   <!-- plastron -->
   <path fill="#C1121F" opacity="0.9" d="M100 58 C104 58 107 62 107 68 L105 96 L95 96 L93 68 C93 62 96 58 100 58 Z"/>
-  <!-- tête -->
+  <!-- head -->
   <circle cx="100" cy="40" r="12" fill="url(#feather)" stroke="#C1121F" stroke-width="2"/>
   <!-- bec -->
   <path fill="#C1121F" d="M109 35 L130 41 L109 46 Z"/>
@@ -73,7 +73,7 @@
     <path d="M116 173 q-7 -2 -10 4 q8 3 10 -4 Z"/>
   </g>
 
-  <!-- queue en éventail -->
+  <!-- fan tail -->
   <path fill="url(#feather)" stroke="#C1121F" stroke-width="2" stroke-linejoin="round"
     d="M96 148 L104 148 L118 180 L108 176 L100 184 L92 176 L82 180 Z"/>
 

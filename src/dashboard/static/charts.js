@@ -1,8 +1,8 @@
 /* ViaRoma — Canvas 2D charts. Roma Aeterna.
    Palette: or romain, pourpre tyrien, travertin, laurier, terre cuite.
-   Aucune dependance externe. */
+   No external dependencies. */
 
-/* ── Palette de l'Empire ─────────────────────────────────────────── */
+/* ── Palette of the Empire ───────────────────── ────────────────────── */
 const ROMA = {
   gold:     '#c69b4a',   // or romain
   goldHi:   '#e8cd8a',
@@ -26,8 +26,8 @@ const Charts = {
     if (!c) return null;
     const dpr = this._dpi();
     const r = c.getBoundingClientRect();
-    // Canvas masque (panel droit en display:none) => rect 0x0. On sort ici:
-    // c'est la source du rayon negatif qui cassait tout le panneau.
+    // Canvas mask (right panel in display:none) => rect 0x0. We come out here:
+    // this is the source of the negative ray which broke the entire panel.
     if (!(r.width > 0) || !(r.height > 0)) return null;
     c.width  = Math.round(r.width  * dpr);
     c.height = Math.round(r.height * dpr);
@@ -36,19 +36,19 @@ const Charts = {
     return { ctx, w: r.width, h: r.height };
   },
 
-  /* Couronne de laurier: deux branches de feuillage autour de l'anneau.
-     Les feuilles pointent vers l'interieur, comme sur une vraie couronne. */
+  /* Laurel wreath: two branches of foliage around the ring.
+     The leaves point inwards, like on a real crown. */
   _laurel(ctx, cx, cy, radius, n, spread) {
     for (let i = 0; i < n; i++) {
       const t = (i / (n - 1)) * spread;
       const side = (i % 2 === 0) ? 1 : -1;
-      // rayon legerement variable: la couronne n'est pas parfaitement reguliere
+      // slightly variable radius: the crown is not perfectly regular
       const rr = radius * (0.955 + (i % 3) * 0.022);
       const x = cx + Math.cos(t) * rr;
       const y = cy + Math.sin(t) * rr;
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(t + side * 0.70);   // pointe vers le centre
+      ctx.rotate(t + side * 0.70);   // points towards the center
       ctx.beginPath();
       ctx.ellipse(0, 0, radius * 0.155, radius * 0.042, 0, 0, Math.PI * 2);
       const g = ctx.createLinearGradient(0, -radius * 0.045, 0, radius * 0.045);
@@ -76,18 +76,18 @@ const Charts = {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Medaillon de fond (travertin, lueur d'or au centre)
+    // Background medallion (travertine, gold glow in the center)
     const bg = ctx.createRadialGradient(cx - R * 0.25, cy - R * 0.3, R * 0.05, cx, cy, rIn);
     bg.addColorStop(0, '#fffdf7');
     bg.addColorStop(1, ROMA.travDk);
     ctx.beginPath(); ctx.arc(cx, cy, rIn - 0.5, 0, Math.PI * 2);
     ctx.fillStyle = bg; ctx.fill();
 
-    // Couronne de laurier (deux branches, espace en haut)
+    // Laurel wreath (two branches, space at top)
     const laurelR = R * 0.92;
     this._laurel(ctx, cx, cy, laurelR, 26, Math.PI * 1.82);
 
-    // Anneau de donnees
+    // Data Ring
     const gap = 0.014;
     let a = -Math.PI / 2;
     segments.forEach(seg => {
@@ -107,13 +107,13 @@ const Charts = {
       a += span;
     });
 
-    // Filet d'or entre l'anneau et le medaillon
+    // Gold thread between the ring and the medallion
     ctx.beginPath(); ctx.arc(cx, cy, rIn - 0.5, 0, Math.PI * 2);
     ctx.strokeStyle = ROMA.goldDk; ctx.lineWidth = 2; ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, rIn - 3.5, 0, Math.PI * 2);
     ctx.strokeStyle = 'rgba(198,155,74,.45)'; ctx.lineWidth = 1; ctx.stroke();
 
-    // Chiffre au centre, en pourpre tyrien
+    // Number in the center, in Tyrian purple
     const pct = opts.pct !== undefined ? opts.pct + '%' : '';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = ROMA.tyrian;
@@ -129,7 +129,7 @@ const Charts = {
     ctx.fillText(String(opts.label || '').toUpperCase(), cx, cy + R * 0.31);
   },
 
-  /* ── Colonnes romaines: socle, fût cannelé, chapiteau ──────────── */
+  /* ── Roman columns: base, fluted shaft, capital ──────────── */
   bar3d(id, bars, opts = {}) {
     const cv = this._ctx(id); if (!cv) return;
     const { ctx, w, h } = cv;
@@ -137,7 +137,7 @@ const Charts = {
     if (!bars.length) {
       ctx.fillStyle = ROMA.ink; ctx.font = '11px "Segoe UI", Georgia, serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('Aucune donnee', w / 2, h / 2);
+      ctx.fillText('No data', w / 2, h / 2);
       return;
     }
 
@@ -146,7 +146,7 @@ const Charts = {
     const maxVal = Math.max(...bars.map(b => b.val), 1);
     const colW = Math.max(6, Math.min(32, slot * 0.5));
 
-    // sol en mosaïque
+    // mosaic floor
     ctx.fillStyle = 'rgba(216,205,184,.35)';
     ctx.fillRect(0, h - padB + 6, w, padB - 6);
 
@@ -159,7 +159,7 @@ const Charts = {
       ctx.fillStyle = 'rgba(58,42,26,.10)';
       ctx.fillRect(x + 3, y + 2, colW, colH);
 
-      // fût: degrade de travertin
+      // barrel: travertine grade
       const g = ctx.createLinearGradient(x, 0, x + colW, 0);
       g.addColorStop(0,    bar.colorDk || ROMA.marble);
       g.addColorStop(0.42, bar.colorHi || ROMA.trav);
@@ -192,7 +192,7 @@ const Charts = {
       ctx.fillStyle = ROMA.marble;
       ctx.fillRect(x - 5, h - padB + 4, colW + 10, 5);
 
-      // etiquette, inclinee, ancree a SA colonne pour ne pas s'empiler
+      // label, inclined, anchored to ITS column so as not to pile up
       ctx.save();
       ctx.translate(x - 2, h - padB + 3);
       ctx.rotate(-Math.PI / 5);
@@ -202,7 +202,7 @@ const Charts = {
       ctx.fillText(String(bar.label || '').slice(0, 12), 0, 0);
       ctx.restore();
 
-      // valeur, sur le chapiteau
+      // value, on the marquee
       ctx.fillStyle = ROMA.tyrian;
       ctx.font = 'bold 10px "Segoe UI", Georgia, serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -210,7 +210,7 @@ const Charts = {
     });
   },
 
-  /* ── Aqueduc: la courbe repose sur une arcade de pierre ─────────── */
+  /* ── Aqueduct: the curve rests on a stone arcade ─────────── */
   line(id, points, opts = {}) {
     const cv = this._ctx(id); if (!cv) return;
     const { ctx, w, h } = cv;
@@ -218,7 +218,7 @@ const Charts = {
     if (!points.length) {
       ctx.fillStyle = ROMA.ink; ctx.font = '11px "Segoe UI", Georgia, serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('Aucune donnee', w / 2, h / 2);
+      ctx.fillText('No data', w / 2, h / 2);
       return;
     }
 
@@ -231,7 +231,7 @@ const Charts = {
       y: base - (p / maxVal) * (h - pad * 2),
     }));
 
-    // arcades sous la courbe
+    // arches under the curve
     for (let i = 0; i < P.length - 1; i++) {
       const a = P[i], b = P[i + 1];
       const midY = Math.min(a.y, b.y);
@@ -249,7 +249,7 @@ const Charts = {
       ctx.lineWidth = 1; ctx.stroke();
     }
 
-    // rempart de la ligne
+    // rampart of the line
     ctx.beginPath();
     ctx.moveTo(pad, base);
     P.forEach(p => ctx.lineTo(p.x, p.y));

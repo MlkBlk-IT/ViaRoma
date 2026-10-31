@@ -1,6 +1,6 @@
-// Resolution de l'interpreteur Python + verification des dependances.
-// REGLE ABSOLUE: stdout est RESERVE au protocole MCP (JSON-RPC ligne par
-// ligne). Tout diagnostic passe donc par stderr, jamais par stdout.
+// Resolution of the Python interpreter + checking dependencies.
+// ABSOLUTE RULE: stdout is RESERVED for the MCP protocol (JSON-RPC line by
+// line). Any diagnosis therefore goes through stderr, never through stdout.
 import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -12,8 +12,8 @@ export const eprint = (msg) => process.stderr.write(String(msg) + "\n");
 
 const MIN_VERSION = [3, 12];
 
-// Dependances declarees dans pyproject.toml. Le lanceur refuse de demarrer
-// si une manque: mieux vaut un echec net qu'un demarrage a moitie configure.
+// Dependencies declared in pyproject.toml. The launcher refuses to start
+// if one is missing: better a clear failure than a half-configured startup.
 const DEPS = [
   "fastapi",
   "uvicorn",
@@ -88,9 +88,9 @@ export function depsHint(py) {
   const req = join(PKG_ROOT, "requirements.txt");
   const pip = py.args.length ? "py -3.12 -m pip" : py.cmd + " -m pip";
   return [
-    "[via-roma] Installation des dependances:",
+    "[via-roma] Installing dependencies:",
     "  " + pip + " install -r \"" + req + "\"",
-    "  (ou: " + pip + " install via-roma  -> paquet PyPI)",
+    "  (Or: " + pip + " install via-roma  -> paquet PyPI)",
   ].join("\n");
 }
 
@@ -99,19 +99,19 @@ export function fail(message) {
   process.exit(1);
 }
 
-// Point d'entree commun: trouver un Python utilisable, verifier les
-// dependances, puis rendre la main au lanceur specifique.
+// Common entry point: find a usable Python, check the
+// dependencies, then return control to the specific launcher.
 export function prepare() {
   const py = findPython();
   if (!py) {
     fail(
-      "Python 3.12+ introuvable. Installez Python 3.12 ou definissez " +
+      "Python 3.12+ not found. Install Python 3.12 or set " +
         "VIAROMA_PYTHON=/chemin/vers/python",
     );
   }
   const missing = missingDeps(py);
   if (missing.length) {
-    eprint("[via-roma] Dependances manquantes: " + missing.join(", "));
+    eprint("[via-roma] Missing dependencies: " + missing.join(", "));
     eprint(depsHint(py));
     process.exit(1);
   }
@@ -129,15 +129,15 @@ export function childEnv() {
   };
 }
 
-// Repertoire de travail: racine du paquet (config/ livre + data/ cree) ou
-// VIAROMA_HOME si l'utilisateur veut deplacer l'etat sur un disque donne.
-// Le dossier est cree ici: Node echoue en ENOENT sur un cwd inexistant.
+// Working directory: package root (config/book + data/cree) or
+// VIAROMA_HOME if the user wants to move the state to a given disk.
+// The folder is created here: Node fails in ENOENT on a non-existent cwd.
 export function homeDir() {
   const dir = process.env.VIAROMA_HOME || PKG_ROOT;
   try {
     mkdirSync(dir, { recursive: true });
   } catch {
-    /* le lancement echouera plus bas avec un message clair */
+    /* the launch will fail lower with a clear message */
   }
   return dir;
 }

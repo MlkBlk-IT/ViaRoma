@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// prepack: garde-fou de publication.
+// prepack: release guardrail.
 //
-// Avant de construire le paquet, on verifie que ce qui va partir sur npm /
-// PyPI ne contient:
-//   - aucun secret (token GitHub/OpenAI/Anthropic/AWS/Google, cle privee),
-//   - aucune IP reelle de la machine (calculee a l'execution, jamais ecrite
-//     en dur dans le depot),
-//   - aucun fichier de donnees (data/, .env, credentials),
-//   - et que les assets 3D (three.js) sont bien inclus.
+// Before building the package, we check that what will go to npm /
+// PyPI does not contain:
+//   - no secrets (GitHub/OpenAI/Anthropic/AWS/Google token, private key),
+//   - no real IP of the machine (calculated at runtime, never written
+//     hard in the deposit),
+//   - no data file (data/, .env, credentials),
+//   - and that the 3D assets (three.js) are included.
 //
-// Une violation = exit(1), le paquet n'est pas construit.
+// A violation = exit(1), the package is not built.
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { networkInterfaces } from "node:os";
@@ -20,7 +20,7 @@ import { SECRET_PATTERNS, SKIP_DIRS } from "./_secret_patterns.mjs";
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const eprint = (msg) => process.stderr.write(String(msg) + "\n");
 
-// Ce qui part dans le paquet npm (miroir de package.json "files").
+// What goes into the npm package (mirror of package.json "files").
 const INCLUDE_DIRS = ["bin", "src", "config"];
 const INCLUDE_FILES = [
   "requirements.txt",
@@ -41,7 +41,7 @@ function walk(dir, out) {
   return out;
 }
 
-// IP reelles de la machine (hors loopback): elles ne doivent JAMAIS partir.
+// Real IPs of the machine (excluding loopback): they must NEVER leave.
 function localIPs() {
   const ips = new Set();
   for (const list of Object.values(networkInterfaces())) {
@@ -65,8 +65,8 @@ for (const f of INCLUDE_FILES) {
 
 if (!files.some((f) => f.endsWith(join("static", "vendor", "three", "three.module.js")))) {
   problems.push(
-    "three.js absent du paquet: le dashboard 3D serait muet. " +
-      "Relancer scripts/fetch_3d_assets.py ou re-vendre src/dashboard/static/vendor/three.",
+    "three.js missing from the package: the 3D dashboard would be silent. " +
+      "Relancer scripts/fetch_3d_assets.py or re-sell src/dashboard/static/vendor/three.",
   );
 }
 
@@ -80,12 +80,12 @@ for (const file of files) {
     continue;
   }
   for (const { name, re } of SECRET_PATTERNS) {
-    if (re.test(text)) problems.push("secret potentiel (" + name + ") dans " + rel);
+    if (re.test(text)) problems.push("secret potentiel (" + name + ") In " + rel);
   }
   for (const ip of ips) {
-    if (text.includes(ip)) problems.push("IP reelle de la machine (" + ip + ") dans " + rel);
+    if (text.includes(ip)) problems.push("Real IP of the machine (" + ip + ") In " + rel);
   }
-  if (/(^|[\\/])data[\\/]/.test(rel)) problems.push("fichier de donnees dans le paquet: " + rel);
+  if (/(^|[\\/])data[\\/]/.test(rel)) problems.push("data file in package: " + rel);
 }
 
 if (problems.length) {
@@ -97,7 +97,7 @@ if (problems.length) {
 eprint(
   "[via-roma] garde-fou publication OK (" +
     files.length +
-    " fichiers, " +
+    " files, " +
     ips.length +
     " IP(s) locale(s) protegees)",
 );

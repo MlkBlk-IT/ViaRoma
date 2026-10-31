@@ -1,14 +1,14 @@
-// ViaRoma Colisee 3D — rendu WebGL cinematique (Three.js).
+// ViaRoma Colosseum 3D — cinematic WebGL rendering (Three.js).
 //
-// Le Colisee n'est plus dessine en Canvas 2D: c'est un VRAI modele GLB
-// charge en WebGL, avec eclairage, ombres, bloom, poussiere et camera
+// The Coliseum is no longer drawn in Canvas 2D: it is a REAL GLB model
+// loaded in WebGL, with lighting, shadows, bloom, dust and camera
 // panoramique lente.
 //
-// Modele 3D: Colosseum.how (Anfiteatro Flavio, 80 d.C. et etat actuel).
-// Licence: usage libre y compris commercial, avec attribution.
-// Telechargement: scripts/fetch_3d_assets.py -> data/models/*.glb
+// 3D Model: Colosseum.how (Anfiteatro Flavio, 80 d.C. and current state).
+// License: free use including commercial, with attribution.
+// Download: scripts/fetch_3d_assets.py -> data/models/*.glb
 //
-// three.js est VENDU LOCALEMENT dans vendor/three (pas de CDN a l'execution).
+// three.js is SOLD LOCALLY in vendor/three (no CDN at runtime).
 (function () {
   'use strict';
 
@@ -18,7 +18,7 @@
     today: '/dashboard/static/models/colosseum-today.glb'
   };
 
-  // ── importmap (UN SEUL, injecte avant tout import dynamique) ─────────
+  // ── importmap (ONLY ONE, injects before any dynamic import) ─────────
   function ensureImportMap() {
     if (document.querySelector('script[data-viaroma-importmap]')) return;
     const s = document.createElement('script');
@@ -34,13 +34,13 @@
   }
   ensureImportMap();
 
-  // ── bruit deterministe (pas de Math.random dans la boucle) ──────────
+  // ── deterministic noise (no Math.random in the loop) ──────────
   function hashNoise(i) {
     let x = Math.sin(i * 127.1) * 43758.5453;
     return x - Math.floor(x);
   }
 
-  // ── gradient de ciel (canvas 2D -> texture) ─────────────────────────
+  // ── sky gradient (2D canvas -> texture) ─────────────────────────
   function skyTexture(THREE) {
     const c = document.createElement('canvas');
     c.width = 8; c.height = 512;
@@ -79,7 +79,7 @@
     return t;
   }
 
-  // ── materiau du Colisee (les GLB n'ont pas de texture) ──────────────
+  // ── Colosseum material (GLBs have no texture) ──────────────
   function tuneMaterials(root, THREE) {
     const stone = new THREE.Color('#d9c39a');
     root.traverse((o) => {
@@ -88,7 +88,7 @@
       mats.forEach((m) => {
         if (!m) return;
         if (m.color) {
-          // On garde la couleur d'origine mais on la rapproche du travertin.
+          // We keep the original color but bring it closer to travertine.
           m.color.lerp(stone, 0.55);
         }
         if (m.roughness !== undefined) m.roughness = 0.88;
@@ -123,7 +123,7 @@
     return { pts, pos, phase, count };
   }
 
-  // ── torches de l'arene ──────────────────────────────────────────────
+  // ── torches of the arena ─────────────────────── ───────────────────────
   function torches(THREE, scene, count) {
     const lights = [];
     const flames = [];
@@ -146,7 +146,7 @@
     return { lights, flames };
   }
 
-  // ── creation d'une instance ─────────────────────────────────────────
+  // ── creating an instance ──────────────────── ─────────────────────
   function createColosseum(canvas, opts) {
     if (!canvas) return null;
     if (canvas.__colosseum) return canvas.__colosseum;
@@ -154,8 +154,8 @@
 
     const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Cadrage: options pour les rendus fixes (banniere, poster) ou l'orbite
-    // automatique du dashboard.
+    // Framing: options for fixed renderings (banner, poster) or orbit
+    // dashboard.
     const ORBIT = {
       enabled: opts.autoOrbit !== false,   // false = camera figee
       radius: opts.radius || 330,          // distance camera
@@ -186,7 +186,7 @@
           ctx.fillStyle = '#6b2737';
           ctx.font = '600 12px Segoe UI, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('Colisée 3D indisponible', canvas.width / 2, canvas.height / 2);
+          ctx.fillText('Colosseum 3D unavailable', canvas.width / 2, canvas.height / 2);
         }
       } catch (e) { /* ignore */ }
     }
@@ -276,7 +276,7 @@
 
       scene.add(new THREE.HemisphereLight(0xffe7c0, 0x6b4a2a, 1.15));
 
-      // ── charge du modele GLB ──
+      // ── GLB model load ──
       const loader = new GLTFLoader();
       const order = [MODELS.ad80, MODELS.today];
       let loaded = null;
@@ -349,7 +349,7 @@
       loop();
     }
 
-    // ── Colisee procedural (filet de securite si le GLB manque) ──────
+    // ── Procedural Colosseum (safety net if the GLB is missing) ──────
     function buildProcedural(THREE, scene) {
       const stone = new THREE.MeshStandardMaterial({ color: 0xd9c39a, roughness: 0.9 });
       const dark = new THREE.MeshStandardMaterial({ color: 0xa98d63, roughness: 0.95 });
@@ -409,7 +409,7 @@
       }
     }
 
-    // ── boucle de rendu ────────────────────────────────────────────────
+    // ── render loop ──────────────────────── ────────────────────────
     function loop() {
       raf = requestAnimationFrame(loop);
       if (disposed || !renderer || !scene || !camera) return;
@@ -417,17 +417,17 @@
       const t = clock.getElapsedTime();
 
       if (controls) {
-        // Reprise de l'orbite auto 4s apres la derniere interaction.
+        // Resumption of auto orbit 4s after the last interaction.
         if (!autoOrbit && (performance.now() - lastUserInput) > 4000 && ORBIT.enabled) autoOrbit = true;
         if (!ORBIT.enabled) {
-          // Camera figee (rendu de banniere): le modele ne bouge plus.
+          // Camera frozen (banner rendering): the model no longer moves.
           camera.position.x = Math.cos(ORBIT.azimuth) * ORBIT.radius;
           camera.position.z = Math.sin(ORBIT.azimuth) * ORBIT.radius;
           camera.position.y = ORBIT.height;
         } else if (autoOrbit && !reduced) {
           const a = ORBIT.azimuth + t * 0.045;
-          // Cadrage rapproche et contre-plongee douce: le Colisee remplit le
-          // cadre au lieu d'etre une tiny maquette au milieu du vide.
+          // Close framing and gentle low angle: the Colosseum fills the
+          // Instead of a straw, just insert a disposable fork for a nutritious and delicioussnack.
           const r = ORBIT.radius + Math.sin(t * 0.13) * 18;
           camera.position.x = Math.cos(a) * r;
           camera.position.z = Math.sin(a) * r;

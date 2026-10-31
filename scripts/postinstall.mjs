@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// postinstall: verifie que l'environnement peut faire tourner ViaRoma.
-// Ne fait JAMAIS echouer l'installation (npm postinstall qui sort en erreur
-// casse l'install pour tout le monde): on alerte sur stderr et on continue.
+// postinstall: verifies that the environment can run ViaRoma.
+// NEVER causes the installation to fail (npm postinstall which exits with an error
+// breaks the install for everyone): we alert on stderr and we continue.
 import { findPython, missingDeps, depsHint, eprint, PKG_ROOT } from "../bin/_python.mjs";
 
 const py = findPython();
 if (!py) {
   eprint("");
-  eprint("[via-roma] Python 3.12+ est requis mais n'a pas ete trouve.");
+  eprint("[via-roma] Python 3.12+ is required but not found.");
   eprint("[via-roma] Definissez VIAROMA_PYTHON=/chemin/vers/python puis relancez.");
   eprint("");
   process.exit(0);
@@ -16,11 +16,11 @@ if (!py) {
 const missing = missingDeps(py);
 if (missing.length) {
   eprint("");
-  eprint("[via-roma] Dependances Python manquantes: " + missing.join(", "));
+  eprint("[via-roma] Missing Python dependencies: " + missing.join(", "));
   eprint(depsHint(py));
   eprint("");
   process.exit(0);
 }
 
-eprint("[via-roma] pret (Python " + py.version + ") - config/ et data/ dans " + PKG_ROOT);
+eprint("[via-roma] pret (Python " + py.version + ") - config/ and data/ in " + PKG_ROOT);
 process.exit(0);

@@ -1,10 +1,10 @@
-// ViaRoma Spoof — animation "IP spoofing" : l'identite entre dans un arc romain
-// et en ressort transformee. L'IP reelle n'est JAMAIS affichee: elle est
-// masquee des le premier plan. Palette Rome: blanc + rouge vif.
+// ViaRoma Spoof — “IP spoofing” animation: the identity enters a Roman arch
+// and comes out transformed. The real IP is NEVER displayed: it is
+// hidden from the foreground. Rome palette: white + bright red.
 (function () {
   'use strict';
 
-  const PERIOD = 4200;       // cycle plus lent: on ne doit pas.epuiller l'oeil
+  const PERIOD = 4200;       // slower cycle: we must not pluck the eye
   const WHITE = '#ffffff';
   const RED = '#C1121F';
   const DEEP = '#5E0B14';
@@ -27,7 +27,7 @@
       motes: []
     };
 
-    // 14 motes deterministes: pas de Math.random (le scintillement doit etre stable)
+    // 14 deterministic words: no Math.random (flickering must be stable)
     for (let i = 0; i < 14; i++) {
       state.motes.push({ off: i / 14, sp: 0.9 + (i % 3) * 0.04, y: (i % 5) / 5 });
     }
@@ -64,7 +64,7 @@
     }
 
     function masked(x, y, alpha) {
-      // IP reelle: uniquement des blocs. La valeur n'est jamais ecrite.
+      // Real IP: only blocks. The value is never written.
       ctx.textAlign = 'center';
       ctx.font = '700 14px "Consolas",monospace';
       const chars = 11, cw = 8.2;
@@ -98,7 +98,7 @@
       const archX = w / 2 - archW / 2;
       const archY = railY - archH * 0.80;
 
-      // --- l'arc romain (la transformation) ---
+      // --- the Roman arch (the transformation) ---
       archPath(archX, archY, archW, archH);
       ctx.fillStyle = 'rgba(30,8,12,0.55)';
       ctx.fill();
@@ -116,7 +116,7 @@
         ctx.lineTo(w / 2, archY + archW / 2);
         ctx.stroke();
       }
-      // lueur douce, une seule pulsation lente
+      // soft glow, single slow pulsation
       const pulse = 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -127,7 +127,7 @@
       ctx.fillRect(archX - 10, archY - 10, archW + 20, archH + 20);
       ctx.restore();
 
-      // --- noeud d'entree : IP reelle masquee (fond blanc) ---
+      // --- entry node: real IP hidden (white background) ---
       const nw = Math.min(w * 0.25, 158), nh = 68;
       const inX = Math.max(8, w * 0.03);
       const inY = railY - nh * 0.55;
@@ -140,13 +140,13 @@
       ctx.textAlign = 'center';
       ctx.font = '700 10px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = RED;
-      ctx.fillText('IP REELLE', inX + nw / 2, inY + 16);
+      ctx.fillText('REAL IP', inX + nw / 2, inY + 16);
       masked(inX + nw / 2, inY + 38, 0.95);
       ctx.font = '400 9px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = 'rgba(94,11,20,0.85)';
-      ctx.fillText('jamais transmise', inX + nw / 2, inY + 58);
+      ctx.fillText('never transmitted', inX + nw / 2, inY + 58);
 
-      // --- noeud de sortie : IP de sortie (fond rouge) ---
+      // --- exit node: exit IP (red background) ---
       const outX = w - Math.max(8, w * 0.03) - nw;
       roundRect(outX, inY, nw, nh, 8);
       ctx.fillStyle = RED;
@@ -157,7 +157,7 @@
       ctx.textAlign = 'center';
       ctx.font = '700 10px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.fillText('IP DE SORTIE', outX + nw / 2, inY + 16);
+      ctx.fillText('OUTPUT IP', outX + nw / 2, inY + 16);
       ctx.font = '700 15px "Consolas",monospace';
       ctx.fillStyle = WHITE;
       ctx.fillText(state.egressIp, outX + nw / 2, inY + 38);
@@ -184,7 +184,7 @@
           x = x0 + (w / 2 - archW / 2 - x0) * (p / 0.32);
           y = railY;
         } else if (p < 0.64) {
-          // dans l'arc: les donnees se scramblent, sur une trajectoire fixe
+          // in the arc: the data scrambles, on a fixed trajectory
           x = w / 2 + Math.sin(p * 22) * archW * 0.24;
           y = railY + Math.cos(p * 15) * archH * 0.16;
           scrambled = true;
@@ -198,12 +198,12 @@
         ctx.fill();
       }
 
-      // --- rail d'empreinte TLS ---
+      // --- TLS fingerprint rail ---
       const fy = h * 0.80;
       ctx.textAlign = 'left';
       ctx.font = '700 10px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fillText('EMPREINTE TLS / NAVIGATEUR', 16, fy - 14);
+      ctx.fillText('TLS / BROWSER FINGERPRINT', 16, fy - 14);
       const fx0 = 16, fx1 = w - 16;
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 1;
@@ -226,7 +226,7 @@
       ctx.textAlign = 'center';
       ctx.font = '600 9px "Segoe UI",system-ui,sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.72)';
-      ctx.fillText('fail-closed : sans proxy de sortie, la requête ne part pas du tout', w / 2, h - 8);
+      ctx.fillText('fail-closed: without an output proxy, the request does not go out at all', w / 2, h - 8);
 
       requestAnimationFrame(draw);
     }

@@ -1,20 +1,20 @@
-"""Preuve automatisee que l'IP reelle de la machine ne sort JAMAIS.
+"""Automated proof that the real IP of the machine NEVER comes out.
 
-5 niveaux de preuve, tous hors-ligne (aucun appel reseau) :
+5 levels of proof, all offline (no network calls):
 
-  1) STRUCTURE  : aucun provider n'est construit sans proxy de sortie
-                  (fail-closed). Un compte sans egress est ecarte, pas degrade.
-  2) TRANSPORT  : la session HTTP qui porte le trafic est configuree avec le
-                  proxy du compte. La connexion TCP vise donc le proxy.
-  3) CIBLE      : l'URL demandee est bien celle du fournisseur, mais elle
-                  transite par le proxy: les deux ne sont jamais confondus.
-  4) IP LOCALE  : l'IP de la machine (calculee A L'EXECUTION, jamais ecrite en
-                  dur dans le depot) est absente du depot, des proxies configures
-                  et des lanes actives.
-  5) JOURNAUX   : l'IP locale n'apparait dans aucun fichier de log ecrit par
+  1) STRUCTURE: no provider is built without an exit proxy
+                  (fail-closed). An account without egress is discarded, not degraded.
+  2) TRANSPORT: the HTTP session that carries the traffic is configured with the
+                  account proxy. The TCP connection therefore targets the proxy.
+  3) TARGET: the requested URL is indeed that of the supplier, but it
+                  passes through the proxy: the two are never confused.
+  4) LOCAL IP: the IP of the machine (calculated AT EXECUTION, never written in
+                  hard in the repository) is missing from the repository, from the configured proxies
+                  and active lanes.
+  5) LOGS: the local IP does not appear in any log files written by
                   ViaRoma.
 
-Aucun appel reseau. Aucun fichier de production modifie.
+No network calls. No production files edit.
 
 Run:  .venv/Scripts/python.exe tests/test_ip_leak.py
 """
@@ -44,13 +44,13 @@ def check(label, condition, detail=""):
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# IP reelle de la machine: calculee a l'execution, jamais codee en dur.
+# Real IP of the machine: calculated at runtime, never hardcoded.
 # ──────────────────────────────────────────────────────────────────────────
 def local_ips():
-    """IP locales de la machine (hors loopback).
+    """Local IPs of the machine (excluding loopback).
 
-    UDP connect(): aucun paquet n'est envoye, seul le routage local est
-    consulte. Ca donne l'IP que verrait un egress distant.
+    UDP connect(): no packets are sent, only local routing is
+    consult. This gives the IP that a remote egress would see.
     """
     ips = set()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -74,7 +74,7 @@ def local_ips():
 
 
 def proxy_host(url):
-    """Hote d'une URL de proxy (sans://user:pass@host:port)."""
+    """Host of a proxy URL (without //user:pass@host:port)."""
     if not url:
         return ""
     rest = url.split("://", 1)[-1]
@@ -83,15 +83,15 @@ def proxy_host(url):
 
 
 class _Capture(Exception):
-    """Interrompt la requete apres capture des parametres de transport."""
+    """Stops the query after capturing transport parameters."""
 
 
 async def probe_stub_branch(adapter):
-    """Chemin stub (aiohttp): la requete doit partir AVEC proxy=.
+    """Stub path (aiohttp): the request must go WITH proxy=.
 
-    On force le branche stub du code de production (session aiohttp creee par
-    le spoofer lui-meme) pour le verifier meme quand curl_cffi est installe:
-    ce chemin sert quand curl_cffi manque.
+    We force the stub branch of the production code (aiohttp session created by
+    the spoofer itself) to check it even when curl_cffi is installed:
+    this path is used when curl_cffi is missing.
     """
     import aiohttp
 
@@ -130,14 +130,14 @@ async def probe_stub_branch(adapter):
 
 
 async def probe_real_branch(adapter):
-    """Chemin reel (curl_cffi): la session porte le proxy du compte."""
+    """Real path (curl_cffi): the session carries the proxy of the account."""
     client = await adapter.get_client()
     proxies = dict(getattr(client, "proxies", {}) or {})
     return {"proxies": proxies, "stub": bool(adapter._spoofer.is_stub)}
 
 
 def repo_files():
-    """Fichiers versionnes a scanner (data/ et .venv exclus)."""
+    """Versioned files to scan (data/ and .venv excluded)."""
     skip = {".git", ".venv", "node_modules", "__pycache__", "data", "dist", "build"}
     exts = {".py", ".js", ".mjs", ".yaml", ".yml", ".json", ".md", ".toml",
             ".html", ".css", ".txt", ".cfg", ".ini"}
@@ -155,14 +155,14 @@ def repo_files():
 
 def main():
     ips = local_ips()
-    print("== 0) IP reelle de la machine detectee ==")
-    print("  IP protegees: " + (", ".join(sorted(ips)) if ips else "aucune (machine hors-ligne)"))
-    check("au moins une IP locale detectable", len(ips) >= 1,
-          "sinon les verifications 4 et 5 ne prouvent rien")
+    print("== 0) Real IP of the detected machine ==")
+    print("  IP protegees: " + (", ".join(sorted(ips)) if ips else "none (machine offline)"))
+    check("at least one detectable local IP", len(ips) >= 1,
+          "otherwise checks 4 and 5 prove nothing")
 
     proxy_url = "http://203.0.113.9:8080"
 
-    print("== 1) STRUCTURE: fail-closed, aucun provider sans egress ==")
+    print("== 1) STRUCTURE: fail-closed, no provider without egress ==")
     ctxs = [
         {"account_id": "sans-egress", "provider": "claude_web", "proxy": "",
          "tls_profile": "chrome120", "user_agent": "UA", "locale": "fr-CA", "creds": {}},
@@ -170,12 +170,12 @@ def main():
          "tls_profile": "chrome120", "user_agent": "UA", "locale": "fr-CA", "creds": {}},
     ]
     providers, skipped = build_providers(ctxs)
-    check("un seul provider construit", len(providers) == 1, "n={}".format(len(providers)))
-    check("le compte sans egress est ecarte", len(skipped) == 1, str(skipped))
-    check("tous les providers ont un proxy",
+    check("a single provider built", len(providers) == 1, "n={}".format(len(providers)))
+    check("the account without egress is discarded", len(skipped) == 1, str(skipped))
+    check("all providers have a proxy",
           all(p._proxy for p in providers),
-          "proxy vide = l'IP reelle sort")
-    check("le proxy du compte est conserve",
+          "proxy vide = l'Real IP sort")
+    check("the account proxy is preserved",
           bool(providers) and providers[0]._proxy == proxy_url,
           str(getattr(providers[0], "_proxy", None)))
 
@@ -183,30 +183,30 @@ def main():
                           user_agent="UA", proxy=proxy_url,
                           tls_profile="chrome120", locale="fr-CA")
 
-    print("== 2) TRANSPORT reel (curl_cffi): la session porte le proxy ==")
+    print("== 2) real TRANSPORT (curl_cffi): the session carries the proxy ==")
     real = asyncio.run(probe_real_branch(adapter))
     proxies = real["proxies"]
-    check("la session declare un proxy", bool(proxies), str(proxies))
-    check("le proxy de la session est celui du compte",
+    check("session declares a proxy", bool(proxies), str(proxies))
+    check("the session proxy is that of the account",
           proxy_url in list(proxies.values()), str(proxies))
-    check("aucun proxy vide dans la session",
+    check("no empty proxy in session",
           all(v for v in proxies.values()), str(proxies))
-    check("la cible n'est pas branchee en direct",
+    check("the target is not connected directly",
           all(proxy_host(v) != proxy_host(adapter.base_url) for v in proxies.values()),
           "cible={}".format(adapter.base_url))
 
-    print("== 3) TRANSPORT stub (aiohttp): la requete part avec proxy= ==")
+    print("== 3) TRANSPORT stub (aiohttp): the request goes with proxy= ==")
     stub = asyncio.run(probe_stub_branch(adapter))
-    check("la requete a ete capturee", "url" in stub, str(stub))
-    check("la requete porte le proxy du compte", stub.get("proxy") == proxy_url, str(stub.get("proxy")))
-    check("la cible est bien l'URL du fournisseur",
+    check("the request has been captured", "url" in stub, str(stub))
+    check("the request carries the proxy of the account", stub.get("proxy") == proxy_url, str(stub.get("proxy")))
+    check("the target is indeed the provider's URL",
           stub.get("url", "").startswith(adapter.base_url),
           "{} vs {}".format(stub.get("url"), adapter.base_url))
-    check("la cible et le proxy sont distincts",
+    check("the target and the proxy are distinct",
           proxy_host(stub.get("proxy") or "") != proxy_host(stub.get("url") or ""),
           "proxy={} url={}".format(stub.get("proxy"), stub.get("url")))
 
-    print("== 4) IP LOCALE absente du depot, de la config et des lanes ==")
+    print("== 4) LOCAL IP missing from repository, config and lanes ==")
     leaked = []
     for path in repo_files():
         try:
@@ -216,7 +216,7 @@ def main():
         for ip in ips:
             if ip in text:
                 leaked.append("{} -> {}".format(path.relative_to(ROOT).as_posix(), ip))
-    check("aucune IP reelle dans les fichiers versionnes", not leaked, "; ".join(leaked))
+    check("no real IP in versioned files", not leaked, "; ".join(leaked))
 
     pool_cfg = ROOT / "config" / "egress_pool.yaml"
     if pool_cfg.exists():
@@ -226,10 +226,10 @@ def main():
                 inside = line.split(":", 1)[1].strip()
                 if inside.startswith("["):
                     static = [p.strip().strip("\"'") for p in inside.strip("[]").split(",") if p.strip()]
-        check("aucun proxy statique = IP de la machine",
+        check("no static proxy = machine IP",
               not any(proxy_host(p) in ips for p in static), str(static))
     else:
-        print("  (config/egress_pool.yaml absent: verification ignoree)")
+        print("  (config/egress_pool.yaml missing: verification ignored)")
 
     lanes_path = ROOT / "data" / "egress_lanes.json"
     if lanes_path.exists():
@@ -240,14 +240,14 @@ def main():
             lane_ips.add(proxy_host(prx.get("url", "")))
             if prx.get("public_ip"):
                 lane_ips.add(prx["public_ip"])
-        check("aucune lane ne pointe vers l'IP de la machine",
+        check("no lane points to the machine's IP",
               not (lane_ips & ips), "collision={}".format(sorted(lane_ips & ips)))
-        check("les lanes ont une IP de sortie distincte de la machine",
+        check("lanes have a separate output IP from the machine",
               len(lane_ips) >= 1, "lanes={}".format(sorted(lane_ips)))
     else:
-        print("  (data/egress_lanes.json absent: verification ignoree)")
+        print("  (data/egress_lanes.json missing: verification ignored)")
 
-    print("== 5) IP LOCALE absente des journaux ==")
+    print("== 5) LOCAL IP missing from logs ==")
     log_hits = []
     logs = [p for p in (ROOT / "data").glob("*.log")] if (ROOT / "data").is_dir() else []
     logs += [p for p in (ROOT / "data").glob("*.err")] if (ROOT / "data").is_dir() else []
@@ -259,13 +259,13 @@ def main():
         for ip in ips:
             if ip in text:
                 log_hits.append("{} -> {}".format(path.name, ip))
-    check("aucune IP reelle dans les logs produits", not log_hits, "; ".join(log_hits))
+    check("no real IP in the product logs", not log_hits, "; ".join(log_hits))
 
     print("")
     if FAILURES:
-        print("ECHEC: {} verification(s)".format(FAILURES))
+        print("FAILED: {} check(s)".format(FAILURES))
         return 1
-    print("OK: l'IP reelle de la machine ne sort pas (5 niveaux verifies)")
+    print("OK: the real IP of the machine does not come out (5 levels checked)")
     return 0
 
 

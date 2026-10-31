@@ -11,7 +11,7 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
-# Racine de travail: racine du paquet, ou VIAROMA_HOME si defini (install
+# Working root: package root, or VIAROMA_HOME if defined (install
 # PyPI -> dossier inscriptible par l'utilisateur).
 ROOT = os.environ.get("VIAROMA_HOME") or os.path.dirname(os.path.dirname(__file__))
 CONFIG_DIR = os.path.join(ROOT, "config")

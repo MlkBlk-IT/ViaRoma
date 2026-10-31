@@ -1,10 +1,10 @@
 
 """
 Module: src/hunter/hunter.py
-Role: Scraper autonome de modeles frontier gratuits.
+Role: Standalone scraper of free frontier models.
 Fusion: workers/free_hunter.py + src/hunter/hunter.py (Roma).
-  - conserve scan_openrouter_free() et run_discovery_loop(interval_seconds) de Roma
-  - ajoute: catalogue persistant, filtre tier FRONTIER, callback on_discovery
+  - preserve scan_openrouter_free() and run_discovery_loop(interval_seconds) from Roma
+  - adds: persistent catalog, FRONTIER tier filter, on_discovery callback
 """
 from __future__ import annotations
 
@@ -21,15 +21,15 @@ from typing import Callable, Dict, List, Optional
 
 import aiohttp
 
-# ── GGUF: lecture du niveau de quantification dans le nom de fichier ──────
+# ── GGUF: read quantization level in file name ──────
 _QUANT_RE = re.compile(r"^(IQ\d|Q\d|BF\d|F\d|FP\d|EXL\d|TQ\d|F16|F32)")
 
 
 def _gguf_quant(filename: str) -> str:
     """'Qwen2.5-7B-Instruct-Q4_K_M.gguf' -> 'Q4_K_M'.
 
-    Le nom reel du fichier est la seule source de verite du niveau de
-    quantification: on ne deduit rien, on lit.
+    The actual file name is the only source of truth for the level of
+    quantification: we deduce nothing, we read.
     """
     stem = filename[:-5] if filename.lower().endswith(".gguf") else filename
     for part in reversed(stem.split("-")):
@@ -40,7 +40,7 @@ def _gguf_quant(filename: str) -> str:
 
 
 def _log(*args, **kwargs):
-    """Logs sur stderr: stdout est reserve au protocole MCP (transport stdio)."""
+    """Logs on stderr: stdout is reserved for the MCP protocol (stdio transport)."""
     kwargs.setdefault("file", sys.stderr)
     import builtins
     builtins.print(*args, **kwargs)
@@ -58,9 +58,9 @@ class FreeModel:
     model_id: str
     provider: str
     tier: ModelTier
-    # Fenetre de contexte REELLE. None = la source ne l'a pas publiee.
-    # On n'invente JAMAIS une valeur (c'etait 32768 en dur partout: un
-    # mensonge repete sur 2000 modeles).
+    # REAL context window. None = the source did not publish it.
+    # We NEVER invent a value (it was 32768 written all over: a
+    # lie repeated on 2000 models).
     context_window: Optional[int] = None
     discovered_at: float = field(default_factory=time.time)
     last_verified: float = field(default_factory=time.time)
@@ -76,29 +76,29 @@ class FreeModel:
     def from_dict(cls, data):
         data = dict(data)
         data["tier"] = ModelTier(data["tier"])
-        # Les anciens catalogues avaient un 32768 fabrique: on le supprime.
+        # The old catalogs had a factory number 32768: we are removing it.
         if data.get("context_window") == 32768 and not (data.get("metadata") or {}).get("ctx_source"):
             data["context_window"] = None
         return cls(**data)
 
 
 class FreeHunter:
-    """Scanner autonome de modeles gratuits.
+    """Free standalone template scanner.
     - Interroge sources connues (OpenRouter, HuggingFace)
     - Filtre tier FRONTIER uniquement (exclut 7B/8B/mini/quantized)
-    - Persiste le catalogue sur disque
-    - Callback on_discovery pour notifier CircuitBreaker/ProxyLayer
+    - Persists the catalog on disk
+    - Callback on_discovery to notify CircuitBreaker/ProxyLayer
     """
 
     SOURCES = {
         # ── Free API aggregators ──
         "openrouter": "https://openrouter.ai/api/v1/models",
         "huggingface": "https://huggingface.co/api/models?filter=text-generation&sort=downloads",
-        # ── HuggingFace: GGUF (vraie ctx + fichiers de quant), sorties live ──
+        # ── HuggingFace: GGUF (real ctx + quant files), live releases ──
         "hf_gguf": "https://huggingface.co/api/models?filter=gguf&sort=downloads&limit=100",
         "hf_recent": "https://huggingface.co/api/models?sort=createdAt&direction=-1&limit=100",
         "hf_trending": "https://huggingface.co/api/models?sort=trendingScore&direction=-1&limit=100",
-        # ── Registre Ollama (modeles officiels, Chine + Europe inclus) ──
+        # ── Ollama Register (official models, China + Europe included) ──
         "ollama": "https://ollama.com/api/tags",
         # ── Direct free tier APIs ──
         "groq": "https://api.groq.com/openai/v1/models",
@@ -118,8 +118,8 @@ class FreeHunter:
         "llm7": "https://api.llm7.io/v1/models",
     }
 
-    # Architectures GGUF de modeles de LANGAGE. Un depot GGUF d'audio, de
-    # vision ou d'embeddings n'est pas un modele de chat: on l'ecarte.
+    # GGUF architectures of LANGUAGE models. A GGUF repository of audio,
+    # vision or embeddings is not a cat model: we dismiss it.
     LLM_ARCHS = {
         "llama", "llama2", "llama3", "llama4", "qwen2", "qwen3", "qwen3moe",
         "qwen35", "gemma", "gemma2", "gemma3", "gemma4", "phi2", "phi3", "phi4",
@@ -130,14 +130,14 @@ class FreeHunter:
         "starcoder2", "chameleon", "dbrx", "nemotron", "hunyuan",
         "ernie4_5", "seed_oss", "dots1", "arcee", "cohere2", "dbrx2", "gpt-oss",
     }
-    # On exclut explicitement les architectures d'embeddings et de media.
+    # We explicitly exclude embedding and media architectures.
     NON_LLM_ARCHS = {
         "bert", "roberta", "t5", "mert2", "acestep-lm", "whisper", "wav2vec2",
         "clip", "siglip", "vit", "sam", "rn-bert", "nomic-bert", "jina-bert",
     }
 
-    # Origine du laboratoire qui publie le modele. Sert a NE PAS IGNORER les
-    # labos chinois et europeens: ils sont tagges, filtrables et affiches.
+    # Origin of the laboratory which publishes the model. Used to NOT IGNORE the
+    # Chinese and European labs: they are tagged, filterable and displayed.
     ORIGIN_RULES = [
         # ── Chine ──
         ("qwen", "cn", "Chine (Alibaba)"),
@@ -171,32 +171,32 @@ class FreeHunter:
         ("jina", "eu", "Europe (Jina AI, DE)"),
         ("aleph", "eu", "Europe (Aleph Alpha, DE)"),
         ("bloom", "eu", "Europe (BigScience)"),
-        # ── Amerique du Nord / reste du monde ──
-        ("granite", "us", "Etats-Unis (IBM)"),
+        # ── North America / rest of the world ──
+        ("granite", "us", "United States (IBM)"),
         ("cohere", "ca", "Canada (Cohere)"),
         ("ai21", "il", "Israel (AI21)"),
         ("naver", "kr", "Coree (Naver)"),
         ("hyperclova", "kr", "Coree (Naver)"),
         ("falcon", "ae", "E.A.U. (TII Falcon)"),
-        ("openai", "us", "Etats-Unis (OpenAI)"),
-        ("gpt-", "us", "Etats-Unis (OpenAI)"),
-        ("anthropic", "us", "Etats-Unis (Anthropic)"),
-        ("claude", "us", "Etats-Unis (Anthropic)"),
-        ("google", "us", "Etats-Unis (Google)"),
-        ("gemini", "us", "Etats-Unis (Google)"),
-        ("meta-llama", "us", "Etats-Unis (Meta)"),
-        ("llama", "us", "Etats-Unis (Meta)"),
-        ("nvidia", "us", "Etats-Unis (NVIDIA)"),
-        ("microsoft", "us", "Etats-Unis (Microsoft)"),
-        ("xai", "us", "Etats-Unis (xAI)"),
-        ("grok", "us", "Etats-Unis (xAI)"),
-        ("perplexity", "us", "Etats-Unis (Perplexity)"),
-        ("openai-", "us", "Etats-Unis (OpenAI)"),
+        ("openai", "us", "United States (OpenAI)"),
+        ("gpt-", "us", "United States (OpenAI)"),
+        ("anthropic", "us", "United States (Anthropic)"),
+        ("claude", "us", "United States (Anthropic)"),
+        ("google", "us", "United States (Google)"),
+        ("gemini", "us", "United States (Google)"),
+        ("meta-llama", "us", "United States (Meta)"),
+        ("llama", "us", "United States (Meta)"),
+        ("nvidia", "us", "United States (NVIDIA)"),
+        ("microsoft", "us", "United States (Microsoft)"),
+        ("xai", "us", "United States (xAI)"),
+        ("grok", "us", "United States (xAI)"),
+        ("perplexity", "us", "United States (Perplexity)"),
+        ("openai-", "us", "United States (OpenAI)"),
     ]
 
-    # Flux live: sorties et annonces recentes.
+    # Live stream: recent releases and announcements.
     NEWS_FEEDS = [
-        ("Hugging Face — Papiers du jour", "https://huggingface.co/api/daily_papers?limit=30", "json"),
+        ("Hugging Face — Papers of the Day", "https://huggingface.co/api/daily_papers?limit=30", "json"),
         ("Hugging Face — Blog", "https://huggingface.co/blog/feed.xml", "rss"),
         ("r/LocalLLaMA", "https://www.reddit.com/r/LocalLLaMA/.rss", "rss"),
         ("Hacker News", "https://news.ycombinator.com/rss", "rss"),
@@ -204,8 +204,8 @@ class FreeHunter:
         ("Google AI — Blog", "https://blog.google/technology/ai/rss/", "rss"),
     ]
 
-    # Applications locales: repertoire + executables. Elles ne sont JAMAIS
-    # dans le PATH, il faut donc chercher dans les dossiers d'installation.
+    # Local applications: directory + executables. They are NEVER
+    # in the PATH, you must therefore search in the installation folders.
     DESKTOP_APP_TARGETS = {
         "lmstudio": (["LM Studio", "lm-studio", "LM-Studio"], ["LM Studio.exe", "LM-Studio.exe"]),
         "jan": (["Jan", "jan"], ["Jan.exe", "jan.exe"]),
@@ -291,7 +291,7 @@ class FreeHunter:
         return False
 
     def _origin(self, model_id: str) -> Dict[str, str]:
-        """Origine du laboratoire (Chine / Europe / ...). Regle par motif."""
+        """Origin of the laboratory (China / Europe / ...). Rule by pattern."""
         m = (model_id or "").lower()
         for pat, code, label in self.ORIGIN_RULES:
             if pat in m:
@@ -319,7 +319,7 @@ class FreeHunter:
 
 
     async def scan_openrouter_free(self):
-        """Compat Roma: retourne la liste des IDs de modeles :free."""
+        """Compat Roma: returns the list of :free model IDs."""
         models = await self.scan_openrouter()
         return [m.model_id for m in models]
 
@@ -381,11 +381,11 @@ class FreeHunter:
     async def scan_huggingface_gguf(self):
         """Depots GGUF HuggingFace.
 
-        C'est la source la plus precise du catalogue:
-          - la fenetre de contexte REELLE est dans les metadonnees GGUF
-            (`gguf.context_length`) du fichier, pas devinee;
-          - les fichiers de quantification sont les VRAIS fichiers du depot,
-            avec leur VRAIE taille en octets.
+        This is the most accurate source in the catalog:
+          - the REAL context window is in the GGUF metadata
+            (`gguf.context_length`) of the file, not guessed;
+          - the quantification files are the REAL files from the repository,
+            with their REAL size in bytes.
         """
         models = []
         try:
@@ -413,8 +413,8 @@ class FreeHunter:
                         continue
                     gguf = detail.get("gguf") or {}
                     card = detail.get("cardData") or {}
-                    # On ne garde que les modeles de TEXTE: un depot GGUF
-                    # d'audio ou de vision n'est pas un modele de chat.
+                    # We only keep the TEXT models: a GGUF repository
+                    # audio or vision is not a chat model.
                     pipeline = (detail.get("pipeline_tag") or item.get("pipeline_tag") or "").lower()
                     arch = (gguf.get("architecture") or "").lower()
                     is_llm = ((pipeline == "text-generation") or (arch in self.LLM_ARCHS)) \
@@ -436,8 +436,8 @@ class FreeHunter:
                         })
                     if not files:
                         continue
-                    # On garde les quantifications utiles (les plus utilisees
-                    # en local) + f16. Pas les 25 IQ experimental.
+                    # We keep the useful quantifications (the most used
+                    # locally) + f16. Not the 25 IQ experimental.
                     files.sort(key=lambda f: f["size_bytes"])
                     keep = [f for f in files if f["quant"].upper() in (
                         "Q2_K", "Q3_K_M", "Q4_0", "Q4_K_M", "Q4_K_S", "Q5_0",
@@ -468,7 +468,7 @@ class FreeHunter:
         return models
 
     async def scan_huggingface_recent(self):
-        """Sorties live: modeles HF crees recemment + modeles trending."""
+        """Live releases: recently created HF models + trending models."""
         models = []
         try:
             timeout = aiohttp.ClientTimeout(total=20)
@@ -510,7 +510,7 @@ class FreeHunter:
         return models
 
     async def scan_ollama(self):
-        """Registre Ollama: modeles officiels, labos chinois et europeens inclus."""
+        """Ollama register: official models, Chinese and European labs included."""
         models = []
         try:
             timeout = aiohttp.ClientTimeout(total=15)
@@ -576,7 +576,7 @@ class FreeHunter:
         return items
 
     async def scan_news(self) -> List[Dict]:
-        """Flux live des sorties et annonces recentes (RSS + JSON)."""
+        """Live feed of recent releases and announcements (RSS + JSON)."""
         out = []
         try:
             timeout = aiohttp.ClientTimeout(total=12)
@@ -644,8 +644,8 @@ class FreeHunter:
                             return models
                         if not isinstance(data, dict):
                             return models
-                        # items peut etre None sur une source qui renvoie
-                        # {"data": null}: on ne boucle pas sur None.
+                        # items can be None on a source that returns
+                        # {"data": null}: we do not loop on None.
                         items = data.get("data")
                         if not isinstance(items, list):
                             items = data.get("models")
@@ -681,8 +681,8 @@ class FreeHunter:
     async def scan_desktop_apps(self):
         """Detect locally installed desktop AI apps.
 
-        PATH + dossiers d'installation Windows (les apps comme LM Studio,
-        Cherry Studio, Jan ou Unsloth ne sont JAMAIS dans le PATH).
+        PATH + Windows installation folders (apps like LM Studio,
+        Cherry Studio, Jan or Unsloth are NEVER in the PATH).
         """
         import subprocess, shutil, os
         found = []
@@ -699,7 +699,7 @@ class FreeHunter:
                     metadata={"name": app_clean, "exe": exe, "type": "local_app",
                               "origin": self._origin(app_clean)},
                 ))
-        # Dossiers d'installation Windows.
+        # Windows installation folders.
         roots = []
         for var in ("LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
             base = os.environ.get(var)
@@ -779,8 +779,8 @@ class FreeHunter:
             data = json.loads(self.catalog_path.read_text(encoding="utf-8"))
             dropped = 0
             for mid, mdata in data.items():
-                # Nettoyage: un depot GGUF d'audio/embeddings n'est pas un
-                # modele de chat. Il a pu etre catalogue avant le filtre.
+                # Cleanup: a GGUF audio/embeddings repository is not a
+                # cat model. It could have been cataloged before the filter.
                 if str(mid).startswith("hf-gguf/"):
                     arch = str((mdata.get("metadata") or {}).get("architecture") or "").lower()
                     if arch and (arch in self.NON_LLM_ARCHS or arch not in self.LLM_ARCHS):
@@ -788,7 +788,7 @@ class FreeHunter:
                         continue
                 self.catalog[mid] = FreeModel.from_dict(mdata)
             if dropped:
-                _log("[FreeHunter] " + str(dropped) + " entrees GGUF non-LLM retirees")
+                _log("[FreeHunter] " + str(dropped) + " non-LLM GGUF entries removed")
             _log("[FreeHunter] Loaded " + str(len(self.catalog)) + " models from catalog")
         except Exception as e:
             _log("[FreeHunter] Failed to load catalog: " + str(e))
@@ -817,18 +817,18 @@ class FreeHunter:
                 existing = self.catalog[model.model_id]
                 existing.last_verified = time.time()
                 existing.is_active = True
-                # Une VRAIE fenetre de contexte remplace une valeur
-                # absente (ou l'ancien 32768 fabrique).
+                # A REAL context window replaces a value
+                # absent (or the old 32768 manufactured).
                 if model.context_window and not existing.context_window:
                     existing.context_window = model.context_window
                     upgraded += 1
-                # Idem pour les modes de telechargement GGUF.
+                # The same goes for GGUF download modes.
                 if (model.metadata.get("download_modes")
                         and not existing.metadata.get("download_modes")):
                     existing.metadata.update(model.metadata)
                     upgraded += 1
-                # Backfill de l'origine du labo et de la source de la ctx
-                # sur les entrees anciennes (creees avant ces champs).
+                # Backfill of the origin of the lab and the source of the ctx
+                # on old entries (created before these fields).
                 md = existing.metadata
                 if not md.get("origin"):
                     md["origin"] = model.metadata.get("origin") or self._origin(existing.model_id)
@@ -836,14 +836,14 @@ class FreeHunter:
                 if model.metadata.get("ctx_source") and not md.get("ctx_source"):
                     md["ctx_source"] = model.metadata["ctx_source"]
         if upgraded:
-            _log("[FreeHunter] " + str(upgraded) + " modele(s) enrichi(s) (ctx / GGUF reels)")
+            _log("[FreeHunter] " + str(upgraded) + " enriched model(s) (real ctx / GGUF)")
         return added
 
     def get_active_frontier_models(self):
         return [m for m in self.catalog.values() if m.is_active and m.tier == ModelTier.FRONTIER]
 
     def get_recent_models(self, limit=40):
-        """Sorties live: les modeles les plus recemment publies, tous tiers."""
+        """Live releases: the most recently released models, all third parties."""
         items = []
         for m in self.catalog.values():
             ts = (m.metadata or {}).get("created_at") or (m.metadata or {}).get("last_modified")
@@ -854,7 +854,7 @@ class FreeHunter:
         return [m for _, m in items[:limit]]
 
     def get_gguf_models(self, limit=200):
-        """Modeles avec de VRAIS modes de telechargement GGUF."""
+        """Models with REAL GGUF download modes."""
         out = [m for m in self.catalog.values() if (m.metadata or {}).get("download_modes")]
         out.sort(key=lambda m: -(m.metadata.get("downloads") or 0))
         return out[:limit]
@@ -894,7 +894,7 @@ class FreeHunter:
             self.discovered_endpoints = [m.model_id for m in new_models]
 
     def start(self, interval_seconds=None):
-        """Demarre la boucle en tache de fond."""
+        """Starts the loop in the background."""
         self._task = asyncio.create_task(self.run_discovery_loop(interval_seconds))
         return self._task
 

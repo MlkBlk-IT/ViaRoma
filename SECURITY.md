@@ -1,90 +1,90 @@
-# Sécurité — ViaRoma
+# Security — ViaRoma
 
-Ce projet manipule des **identités de session** (cookies, jetons, empreinte TLS) et
-des **IP de sortie jetables**. C'est une surface sensible : une fuite ici ne se voit
-pas, elle se sent quand un compte se fait bannir ou qu'une adresse se met à circuler.
+This project manipulates **session identities** (cookies, tokens, TLS fingerprint) and
+**disposable output IP**. It is a sensitive surface: a leak here is not visible
+not, it feels when an account gets banned or an address starts circulating.
 
-Les règles ci-dessous ne sont pas des intentions : elles sont **codées dans le
-noyau** et vérifiées par `tests/test_security_context.py`.
+The rules below are not intentions: they are **coded in the
+core** and verified by `tests/test_security_context.py`.
 
 ---
 
-## 🔒 Garanties du noyau
+## 🔒 Kernel Guarantees
 
-| Garantie | Mécanisme | Test |
+| Warranty | Mechanism | Test |
 |---|---|---|
-| **L'IP de la machine n'est jamais transmise** | Aucun provider n'est exécuté sans proxy de sortie : `build_providers()` **écarte** le compte (*fail-closed*). Le proxy vient de la lane **du compte**, jamais d'un réglage global. | `test_security_context.py` |
-| **L'IP réelle n'est jamais lue ni affichée** | L'API ne renvoie que l'IP de sortie (`lane.proxy.public_ip`). L'adresse locale n'est ni lue, ni journalisée, ni exposée. | idem |
-| **Les credentials ne quittent jamais la machine** | Résolution à la volée (`env:VAR` / `file:chemin`) au moment de la requête. Aucune valeur n'est journalisée, retournée par l'API, ni versionnée. | idem |
-| **Aucune valeur de cookie n'est renvoyée** | Les endpoints de session renvoient un **nombre** de cookies, jamais leurs valeurs. | idem |
-| **Les jetons ne voyagent pas en cookie** | Le champ `cookie` est une *chaîne* : elle est cassée en jar. Les jetons partent en `Authorization` ; les méta (`org_id`, `device_id`) dans l'URL ou un header dédié. | idem |
-| **Le dashboard n'écoute que sur la boucle locale** | `VIAROMA_HOST` vaut `127.0.0.1` par défaut. | — |
-| **Le dépôt ne contient aucun secret** | `data/` est gitignoré. Les comptes ne pointent que vers des références (`env:` / `file:`). | scan pré-push |
-| **stdout est réservé au protocole MCP** | Les logs du cœur partent sur **stderr**, sinon ils cassent le JSON-RPC. | `test_mcp_server.py` |
+| **The IP of the machine is never transmitted** | No provider is executed without an output proxy: `build_providers()` **discard** the account (*fail-closed*). The proxy comes from the **account** lane, never from a global setting. | `test_security_context.py` |
+| **Actual IP is never read or displayed** | The API only returns the exit IP (`lane.proxy.public_ip`). The local address is not read, logged, or exposed. | ditto |
+| **Credentials never leave the machine** | On-the-fly resolution (`env:VAR` / `file:chemin`) at the time of the request. No values ​​are logged, returned by the API, or versioned. | ditto |
+| **No cookie value is returned** | Session endpoints return a **number** of cookies, never their values. | ditto |
+| **Tokens do not travel in cookies** | The field `cookie` is a *string*: it is broken into jar. The tokens go `Authorization` ; the meta (`org_id`, `device_id`) in the URL or a dedicated header. | ditto |
+| **The dashboard only listens on the local loop** | `VIAROMA_HOST` vaut `127.0.0.1` by default. | — |
+| **The repository contains no secrets** | `data/` is gitignored. Accounts only point to references (`env:` / `file:`). | pre-push scan |
+| **stdout is reserved for the MCP protocol** | Core logs go to **stderr**, otherwise they break JSON-RPC. | `test_mcp_server.py` |
 
 ---
 
-## 🧭 Modèle de menace — ce que le projet protège, et de qui
+## 🧭 Threat model — what the project protects, and from whom
 
-| Acteur | Capacité | Ce qui le protège |
+| Actor | Capacity | What protects him |
 |---|---|---|
-| **Un service tiers** (front web du modèle) | Voit l'IP de sortie, le `User-Agent`, le JA3/JA4, les cookies de session | Cohérence de l'identité : IP + TLS + UA + locale viennent du **même** compte. Une incohérence (requête depuis une autre IP, ou avec un autre profil TLS) est le signal de bannissement le plus classique. |
-| **Un observateur réseau** | Voit le trafic TLS, mais pas le contenu | Le TLS est spoofé (`curl_cffi`, profils JA3/JA4 par compte), la sortie est un proxy disposable. |
-| **Un tiers non autorisé** lit le dépôt | Voit le code | La licence [`LICENSE`](LICENSE) est **propriétaire** : redistribution, fork public et usage commercial sont interdits sans accord écrit. |
-| **Un attaquant local** lit la machine | Accès au disque de l'utilisateur | `data/creds/` n'est ni versionné ni chiffré par le projet : c'est la responsabilité de l'opérateur (chiffrement de disque, compte OS dédié). |
+| **A third-party service** (web front of the model) | Sees the output IP, the `User-Agent`, JA3/JA4, session cookies | Identity consistency: IP + TLS + UA + locale come from the **same** account. An inconsistency (request from another IP, or with another TLS profile) is the most classic ban signal. |
+| **A network observer** | Sees TLS traffic, but not content | The TLS is spoofed (`curl_cffi`, JA3/JA4 profiles per account), the output is a disposable proxy. |
+| **An unauthorized third party** reads the filing | See the code | The license [`LICENSE`](LICENSE) is **proprietary**: redistribution, public fork and commercial use are prohibited without written consent. |
+| **A local attacker** reads the machine | User Disk Access | `data/creds/` is neither versioned nor encrypted by the project: it is the responsibility of the operator (disk encryption, dedicated OS account). |
 
 ---
 
-## 📣 Signaler une faille
+## 📣 Report a vulnerability
 
-Si vous trouvez une faille de sécurité dans ViaRoma :
+If you find a security vulnerability in ViaRoma:
 
-1. **N'ouvrez pas d'issue publique** tant que le correctif n'est pas livré.
-2. Écrivez via les **issues privées** du dépôt GitHub, ou par DM à l'auteur.
-3. Décrivez : le composant, la reproduction, l'impact (fuite d'IP ? fuite de
-   credential ? contournement du fail-closed ?), et si possible un correctif.
-4. Vous avez droit à une **publication** de la faille après correctif et
-   mise à jour de cette page — sauf si la publication expose un secret en
-   circulation, auquel cas l'accord sera discuté au cas par cas.
+1. **Do not open a public issue** until the fix is ​​delivered.
+2. Write via the **private issues** of the GitHub repository, or by DM to the author.
+3. Describe: the component, the reproduction, the impact (IP leak? IP leak
+   credential? bypassing fail-closed?), and if possible a fix.
+4. You have the right to a **publication** of the flaw after patching and
+   updating this page — unless the publication exposes a secret in
+   circulation, in which case the agreement will be discussed on a case-by-case basis.
 
-**Délai cible** : accusé de réception sous 7 jours, correctif ou plan de
-correctif sous 30 jours.
+**Target deadline**: acknowledgment of receipt within 7 days, correction or plan
+fix within 30 days.
 
 ---
 
-## 🧾 Checklist avant publication (à faire à chaque push)
+## 🧾 Checklist before publication (to be done with each push)
 
 ```powershell
-# 1. Aucun secret dans l'historique ni dans le working tree
+# 1. No secrets in the history or in the working tree
 git log -p --all | Select-String -Pattern 'sk-|AIza|Bearer [A-Za-z0-9]{20,}|sessionKey='
 git ls-files | Select-String -Pattern 'sk-|AIza|sessionKey='
 
-# 2. data/ est bien ignoré
+#2. data/ is well ignored
 git check-ignore -v data/creds data/identities.json data/egress_lanes.json
 
-# 3. Les 4 suites passent
+#3. The 4 sequels pass
 .venv/Scripts/python.exe tests/test_burn_chain.py
 .venv/Scripts/python.exe tests/test_identity.py
 .venv/Scripts/python.exe tests/test_security_context.py
 .venv/Scripts/python.exe tests/test_mcp_server.py
 ```
 
-La CI (`.github/workflows/ci.yml`) rejoue les points 3 à chaque push.
+The IC (`.github/workflows/ci.yml`) replays points 3 with each push.
 
 ---
 
-## ⚠️ Limites assumées
+## ⚠️ Limits assumed
 
-* ViaRoma **ne chiffre pas** vos credentials : elles vivent en clair dans
-  `data/creds/` (hors git). C'est le job du système d'exploitation, pas du projet.
-* La récolte de session n'a encore jamais tourné contre un front réel : le
-  chemin « cookies récoltés → jar fusionné » est prouvé par test unitaire, pas
-  par une session réelle.
-* Une complétion réelle n'a pas encore été observée : elle dépend de vos
+* ViaRoma **does not encrypt** your credentials: they live in plain text in
+  `data/creds/` (outside git). That's the job of the operating system, not the project.
+* The session harvest has never yet turned against a real front: the
+  path "harvested cookies → merged jar" is proven by unit test, not
+  by a real session.
+*A real completion has not yet been observed: it depends on your
   credentials.
-* Le fail-closed protège contre la sortie non intentionnelle sur l'IP locale.
-  Il ne protège pas contre un proxy qui ment sur sa propre adresse.
+* Fail-closed protects against unintentional exit on local IP.
+  It does not protect against a proxy lying about its own address.
 
 ---
 
-© 2026 MlkBlk-IT — Tous droits réservés. Voir [`LICENSE`](LICENSE).
+© 2026 MlkBlk-IT — All rights reserved. See [`LICENSE`](LICENSE).

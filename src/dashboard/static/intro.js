@@ -1,15 +1,15 @@
-// Intro ViaRoma — on entre par une rue romaine, on arrive devant le Colisee.
-// Canvas 2D, camera en marche avant, point de fuite central.
+// Intro ViaRoma — you enter via a Roman street, you arrive in front of the Coliseum.
+// 2D canvas, forward camera, central vanishing point.
 // Sautable (clic / Echap / touche). Respecte prefers-reduced-motion.
 (function () {
   'use strict';
 
   const BASE_DUR = 5200;      // duree totale (ms)
-  const BASE_WALK = 3400;     // duree de la marche (ms)
-  const BASE_FADE = 900;      // duree du fondu final
-  const BASE_HOLD = 900;      // palier devant le Colisee
+  const BASE_WALK = 3400;     // walking duration (ms)
+  const BASE_FADE = 900;      // final fade duration
+  const BASE_HOLD = 900;      // landing in front of the Coliseum
 
-  // ?intro=long multiplie la duree (verification / capture d'ecran).
+  // ?intro=long multiplies the duration (verification / screenshot).
   function params() {
     try { return new URLSearchParams(window.location.search); } catch (e) { return new URLSearchParams(); }
   }
@@ -48,7 +48,7 @@
     const horizon = () => h * 0.40;
     const eye = 1.55;
 
-    // Projection 1 point de fuite: x lateral, y hauteur, z profondeur.
+    // Projection 1 vanishing point: x lateral, y height, z depth.
     // Convention: y monte -> l'ecran monte (sy decroit).
     function proj(x, y, z, camZ, f) {
       const d = Math.max(z - camZ, 0.35);
@@ -57,7 +57,7 @@
     }
 
     function cobbles(camZ, f) {
-      // pavés: lignes de sol transversales + rayons
+      // paving stones: transverse ground lines + radii
       ctx.lineWidth = 1;
       for (let z = 1; z < 120; z *= 1.16) {
         if (z - camZ < 0.6) continue;
@@ -87,7 +87,7 @@
       const [, syTop] = proj(x, hcol, z, camZ, f);
       const wcol = Math.max(2, 0.30 * f / Math.max(z - camZ, 0.35));
       const depth = 0.5 + 0.5 * Math.cos(x * 1.2 + z * 0.3);
-      // fût
+      // was
       const grad = ctx.createLinearGradient(sx - wcol, 0, sx + wcol, 0);
       grad.addColorStop(0, 'rgba(226,214,190,' + (0.55 + depth * 0.30) + ')');
       grad.addColorStop(0.45, 'rgba(250,244,230,' + (0.80 + depth * 0.18) + ')');
@@ -135,7 +135,7 @@
     }
 
     function coliseum(z, camZ, f) {
-      // Le Colisee au fond de la rue: silhouette d'ellipse a 3 etages.
+      // The Coliseum at the end of the street: ellipse silhouette with 3 floors.
       const R = 8.5, H = 6.6;
       const [cx, cyBase] = proj(0, 0, z, camZ, f);
       const [ , cyTop] = proj(0, H, z, camZ, f);
@@ -162,7 +162,7 @@
           const x = cx + Math.cos(a) * rw;
           const yy2 = yy + Math.sin(a) * hh * 0.17;
           if (Math.sin(a) < -0.25) continue;   // face cachee
-          // la breche: l'etage haut est effondre
+          // the breach: the upper floor has collapsed
           if (t === 2 && i > 3 && i < 11) continue;
           ctx.beginPath();
           ctx.ellipse(x, yy2, rr * 0.030, hh * 0.055, 0, 0, Math.PI * 2);
@@ -195,7 +195,7 @@
       const t = Math.min(1, el / DUR);
       ctx.clearRect(0, 0, w, h);
 
-      // ciel de soir
+      // evening sky
       const sky = ctx.createLinearGradient(0, 0, 0, h);
       sky.addColorStop(0, '#3b2130');
       sky.addColorStop(0.42, '#7d3a3f');
@@ -213,7 +213,7 @@
       ctx.fillStyle = sg;
       ctx.fillRect(0, 0, w, h);
 
-      // marche avant: camZ de -2 a 44 (la rue, puis le Colisee)
+      // forward: camZ from -2 to 44 (the street, then the Colosseum)
       const walkT = Math.min(1, el / WALK);
       const eased = walkT < 0.5 ? 2 * walkT * walkT : 1 - Math.pow(-2 * walkT + 2, 2) / 2;
       const camZ = -2 + eased * 46;
@@ -227,16 +227,16 @@
       ctx.fillRect(0, horizon(), w, h - horizon());
       cobbles(camZ, f);
 
-      // le Colisee au fond, visible de plus en plus grand
+      // the Coliseum in the background, visible bigger and bigger
       coliseum(48, camZ, f);
 
-      // colonnes de la rue, des deux cotes
+      // street columns, on both sides
       const colH = 3.4;
       for (let z = 4; z < 44; z += 3.4) {
         if (z - camZ < 1.2) continue;
         const l = column(-1.62, z, camZ, f, colH);
         const r = column(1.62, z, camZ, f, colH);
-        // arc traversant la rue
+        // arch crossing the street
         const [ax, ay] = proj(0, colH, z, camZ, f);
         const wArc = Math.abs(l.sx - r.sx);
         ctx.beginPath();
@@ -278,7 +278,7 @@
         ctx.restore();
       }
 
-      // fondu final vers le dashboard
+      // final fade to dashboard
       const fadeT = Math.max(0, Math.min(1, (el - (DUR - FADE)) / FADE));
       if (fadeT > 0) {
         ctx.fillStyle = 'rgba(251,247,238,' + fadeT + ')';

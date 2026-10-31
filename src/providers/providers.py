@@ -3,13 +3,13 @@ Module: src/providers/providers.py
 Role: Web chat provider registry + adapter delegation.
 Each provider delegates streaming to proxy_engine.ADAPTER_REGISTRY (real curl_cffi implementations).
 
-IDENTITE: un provider porte l'identite COMPLETE d'un compte --
-  IP de sortie (lane egress) + profil TLS (JA3/JA4) + User-Agent/locale + jar de cookies.
-  Ces 4 elements viennent de la MEME source (le contexte de routage du compte) pour
-  que le compte ne paraisse pas "changer de machine" d'une requete a l'autre.
+IDENTITY: a provider carries the COMPLETE identity of an account --
+  Exit IP (lane egress) + TLS profile (JA3/JA4) + User-Agent/locale + cookie jar.
+  These 4 elements come from the SAME source (the account routing context) to
+  that the account does not appear to "change machines" from one request to another.
 
-FAIL-CLOSED: un compte sans proxy de sortie est EXCLU de la cascade. L'IP reelle de
-la machine ne doit JAMAIS partir vers un provider.
+FAIL-CLOSED: An account without an exit proxy is EXCLUDED from the cascade. The real IP of
+the machine must NEVER go to a provider.
 """
 from __future__ import annotations
 import logging
@@ -34,8 +34,8 @@ WEB_CHAT_REGISTRY = [
 def parse_cookie_string(raw: str) -> Dict[str, str]:
     """'sessionKey=abc; __session=xyz' -> {'sessionKey': 'abc', '__session': 'xyz'}.
 
-    Le champ de credential "cookie" contient une CHAINE de cookies, pas un cookie
-    unique: l'envoyer tel quel produirait l'en-tete invalide "cookie=sessionKey=...".
+    The "cookie" credential field contains a STRING of cookies, not a cookie
+    unique: sending it as is would produce the invalid header "cookie=sessionKey=...".
     """
     out: Dict[str, str] = {}
     if not raw:
@@ -52,12 +52,12 @@ def parse_cookie_string(raw: str) -> Dict[str, str]:
 
 
 def split_credentials(creds: Dict[str, str]) -> Tuple[Dict[str, str], Dict[str, str]]:
-    """Retourne (jar de cookies, tous les credentials).
+    """Returns (cookie jar, all credentials).
 
-    Le champ "cookie" est casse et verse dans le jar. Les jetons (access_token,
-    token, api_key, auth_token) et les meta (org_id, device_id) ne sont PAS des
-    cookies: ils sortent de l'en-tete Cookie et vont dans le header Authorization
-    ou l'URL de l'endpoint.
+    The "cookie" field is broken and put into the jar. Tokens (access_token,
+    token, api_key, auth_token) and meta (org_id, device_id) are NOT
+    cookies: they come out of the Cookie header and go into the Authorization header
+    or the endpoint URL.
     """
     creds = dict(creds or {})
     jar = parse_cookie_string(creds.get("cookie", ""))
@@ -71,10 +71,10 @@ def split_credentials(creds: Dict[str, str]) -> Tuple[Dict[str, str], Dict[str, 
 class BaseProvider:
     """Wraps a proxy_engine adapter with health scoring.
 
-    Cohérence d'empreinte: le proxy, le profil TLS, l'User-Agent et la locale
-    sont ceux du compte. Envoyer une requete depuis une autre IP que celle du
-    navigateur (ou avec un autre profil TLS) est exactement ce qui fait
-    bannir un compte.
+    Fingerprint consistency: proxy, TLS profile, User-Agent and locale
+    are those of the account. Send a request from an IP other than that of the
+    browser (or with another TLS profile) is exactly what does
+    ban an account.
     """
 
     def __init__(self, provider_key: str, session_id: str, credentials: dict = None,
@@ -126,7 +126,7 @@ class BaseProvider:
             await self._adapter.close()
 
     def describe(self) -> Dict[str, object]:
-        """Etat de routage du provider (aucun secret)."""
+        """Routing state of the provider (no secret)."""
         return {
             "provider_key": self.provider_key,
             "label": self.name,
@@ -141,13 +141,13 @@ class BaseProvider:
 
 
 def build_providers(contexts: List[Dict[str, object]]) -> Tuple[List[BaseProvider], List[Dict[str, str]]]:
-    """Construit les providers depuis les contextes de routage.
+    """Constructs providers from routing contexts.
 
-    FAIL-CLOSED: un compte sans proxy de sortie est EXCLU. On ne sortira JAMAIS
-    sur l'IP reelle de la machine. Le compte est signale comme ecarte pour que
-    le dashboard puisse l'afficher.
+    FAIL-CLOSED: an account without an exit proxy is EXCLUDED. We will NEVER go out
+    on the real IP of the machine. The account is marked as excluded so that
+    the dashboard can display it.
 
-    Retourne (providers, ecartees).
+    Returns (providers, discarded).
     """
     providers: List[BaseProvider] = []
     skipped: List[Dict[str, str]] = []
@@ -159,18 +159,19 @@ def build_providers(contexts: List[Dict[str, object]]) -> Tuple[List[BaseProvide
             continue
         if provider_key not in ADAPTER_REGISTRY:
             skipped.append({"account_id": account_id, "provider": provider_key,
-                            "reason": "provider inconnu du registre"})
+                            "reason": "provider unknown to registry"})
             continue
-        if not proxy:
+        is_official_api = PROVIDER_META.get(provider_key, {}).get("transport") == "api"
+        if not proxy and not is_official_api:
             skipped.append({
                 "account_id": account_id, "provider": provider_key,
-                "reason": "aucun proxy de sortie (fail-closed: l'IP reelle ne doit jamais sortir)",
+                "reason": "no exit proxy (fail-closed: the real IP should never exit)",
             })
             continue
         if not ctx.get("healthy", True):
             skipped.append({
                 "account_id": account_id, "provider": provider_key,
-                "reason": "session en cooldown (rate limit) - compte mis de cote",
+                "reason": "cooldown session (rate limit) - account set aside",
             })
             continue
         creds = dict(ctx.get("creds") or {})
@@ -193,13 +194,13 @@ def get_active_providers(user_agents: Dict[str, str] = None,
                          contexts: List[Dict[str, object]] = None) -> List[BaseProvider]:
     """Return active providers from config. Credentials resolved by SessionManager.
 
-    - `contexts` fourni (chemin de production): les contextes de routage font foi
-      (IP de la lane, profil TLS, UA, cookies recoltes) et le fail-closed s'applique.
-    - sinon (YAML seul): derivation historique depuis accounts.yaml.
+    - `contexts` provided (production path): routing contexts are binding
+      (lane IP, TLS profile, UA, harvest cookies) and fail-closed applies.
+    - otherwise (YAML only): historical derivation since accounts.yaml.
 
-    user_agents: {account_id: user_agent} — l'empreinte HTTP doit etre la meme
-    que celle du navigateur qui a recolte la session, sinon le compte se
-    signale comme ayant change de machine.
+    user_agents: {account_id: user_agent} — HTTP fingerprint must be the same
+    than that of the browser which collected the session, otherwise the account is
+    reported as having changed machine.
     """
     if contexts is not None:
         providers, skipped = build_providers(contexts)

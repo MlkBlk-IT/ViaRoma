@@ -176,7 +176,7 @@ body { font-family:'Segoe UI',system-ui,sans-serif; background:linear-gradient(1
 }
 
 /* ══════════════════════════════════════════════════════════
-   INTRO — rue romaine -> Colisee
+   INTRO — Roman street -> Colosseum
    ══════════════════════════════════════════════════════════ */
 .intro-overlay { position:fixed; inset:0; z-index:9999; background:#2b1820; overflow:hidden; transition:opacity .6s ease; }
 .intro-overlay canvas { display:block; width:100%; height:100%; }
@@ -218,7 +218,7 @@ body { font-family:'Segoe UI',system-ui,sans-serif; background:linear-gradient(1
 .dot { animation: glowPulse 2.4s ease-in-out infinite; }
 
 /* ══════════════════════════════════════════════════════════
-   HERO — Colisee grand + animation IP
+   HERO — large Colosseum + IP animation
    ══════════════════════════════════════════════════════════ */
 .hero { display:grid; grid-template-columns:1.35fr .95fr; gap:12px; margin-bottom:12px; }
 @media (max-width:1100px) { .hero { grid-template-columns:1fr; } }
@@ -242,7 +242,7 @@ body { font-family:'Segoe UI',system-ui,sans-serif; background:linear-gradient(1
 @media (max-width:800px) { .aquila { width:56px; height:66px; } }
 
 /* ══════════════════════════════════════════════════════════
-   DRAWER — fiche detail reelle
+   DRAWER — real detail sheet
    ══════════════════════════════════════════════════════════ */
 .drawer-backdrop { position:fixed; inset:0; background:rgba(40,22,30,.34); backdrop-filter:blur(2px); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:900; }
 .drawer-backdrop.open { opacity:1; pointer-events:auto; }
@@ -265,7 +265,7 @@ body.drawer-open { overflow:hidden; }
 .drawer-tag { display:inline-block; padding:1px 7px; border-radius:9px; font-size:.68rem; font-weight:700; background:rgba(193,18,31,.12); color:var(--danger); margin-right:4px; }
 .drawer-code { font-family:Consolas,monospace; font-size:.74rem; background:#2a1a20; color:#f5e9cf; padding:10px 12px; border-radius:var(--radius-sm); overflow-x:auto; white-space:pre; margin:6px 0 12px; border-left:3px solid var(--danger); }
 
-/* Lignes cliquables: elles doivent avoir l'air cliquables */
+/* Clickable lines: they should look clickable */
 .row.clickable { cursor:pointer; position:relative; padding-right:26px; }
 .row.clickable::after { content:'›'; position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--accent); font-weight:700; opacity:.5; transition:opacity .15s, transform .15s; }
 .row.clickable:hover::after { opacity:1; transform:translateY(-50%) translateX(3px); }
@@ -274,7 +274,7 @@ body.drawer-open { overflow:hidden; }
 .kpi.clickable { cursor:pointer; }
 .kpi.clickable:hover { background:var(--glass-strong); }
 
-/* Centre de commandement (tuile 1 de l'overview) */
+/* Command center (overview tile 1) */
 .cmd-flow { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
 .cmd-node { padding:5px 12px; border-radius:20px; font-size:.72rem; font-weight:700; background:rgba(255,255,255,.72); border:1px solid var(--glass-border); color:var(--txt); }
 .cmd-hub { background:linear-gradient(135deg,var(--purple),var(--purple-deep)); color:#fff; border-color:transparent; box-shadow:0 3px 10px rgba(107,39,55,.28); }
@@ -301,9 +301,9 @@ body.drawer-open { overflow:hidden; }
   *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
 }
 
-/* ══════════════════════════════════════════════════════════
-   SIDE PANEL — groupes complets (style console de pilotage)
-   ══════════════════════════════════════════════════════════ */
+/* ═════════════════════════════ ═════════════════════════════
+   SIDE PANEL — complete groups (control console style)
+   ═════════════════════════════ ═════════════════════════════ */
 .nav-group { margin-bottom:12px; }
 .nav-group > .panel-header { margin-bottom:4px; border-bottom:none; padding-bottom:2px; font-size:.68rem; letter-spacing:1.6px; color:var(--txt-muted); }
 .nav-vertical { margin-bottom:0; }
@@ -313,9 +313,9 @@ body.drawer-open { overflow:hidden; }
 .nav-tab.active .cnt { color:#fff; background:rgba(255,255,255,.25); }
 .nav-counts { font-size:.64rem; font-weight:700; color:var(--txt-muted); }
 
-/* ══════════════════════════════════════════════════════════
-   TILES — grille de panneaux (overview en tuiles)
-   ══════════════════════════════════════════════════════════ */
+/* ═════════════════════════════ ═════════════════════════════
+   TILES — panel grid (tiled overview)
+   ═════════════════════════════ ═════════════════════════════ */
 .tiles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
 .tile { background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:var(--radius); box-shadow:var(--glass-shadow); padding:14px 16px; min-width:0; display:flex; flex-direction:column; }
 .tile-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
@@ -330,7 +330,7 @@ body.drawer-open { overflow:hidden; }
 .tile-bar > i { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,var(--gold-deep),var(--accent-hi)); }
 .tile-note { font-size:.72rem; color:var(--txt-muted); display:flex; justify-content:space-between; gap:8px; }
 
-/* Table de live-requests */
+/* Live-requests table */
 .tile-table { width:100%; border-collapse:collapse; font-size:.76rem; }
 .tile-table th { text-align:left; font-size:.66rem; text-transform:uppercase; letter-spacing:.8px; color:var(--txt-muted); padding:4px 6px; border-bottom:1px solid var(--glass-border); }
 .tile-table td { padding:5px 6px; border-bottom:1px solid rgba(168,124,44,.12); }
@@ -340,7 +340,7 @@ body.drawer-open { overflow:hidden; }
 .dot-err { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--danger); margin-right:5px; }
 
 /* ══════════════════════════════════════════════════════════
-   ARCHITECTURE — graphe d'orchestration live
+   ARCHITECTURE — live orchestration graph
    ══════════════════════════════════════════════════════════ */
 .arch-wrap { background:linear-gradient(175deg,rgba(42,31,26,.045),rgba(193,18,31,.05)); border:1px solid var(--glass-border); border-radius:var(--radius); padding:8px; overflow:auto; box-shadow:var(--glass-shadow); }
 .a-svg { width:100%; height:auto; display:block; min-width:1100px; }

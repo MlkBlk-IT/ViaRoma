@@ -1,8 +1,8 @@
-"""Verifie le contenu du wheel construit.
+"""Checks the contents of the constructed wheel.
 
-Un wheel sans les assets du dashboard s'installe mais le dashboard est muet
-(HTML/CSS/JS manquants) ou la Colisee 3D ne s'affiche pas (three.js absent).
-Ce controle attrape l'erreur AVANT publication.
+A wheel without dashboard assets is installed but the dashboard is silent
+(HTML/CSS/JS missing) or the Colisee 3D is not displayed (three.js absent).
+This check catches the error BEFORE publishing.
 
 Usage:  python scripts/verify_wheel.py [dist/*.whl]
 """
@@ -17,7 +17,7 @@ REQUIRED = [
     "src/dashboard/static/app.js",
     "src/dashboard/static/colosseum3d.js",
     "src/dashboard/static/architecture.js",
-    # three.js + addons: le renderer 3D est vendu, pas charge depuis un CDN.
+    # three.js + addons: the 3D renderer is sold, not loaded from a CDN.
     "src/dashboard/static/vendor/three/three.module.js",
     "src/dashboard/static/vendor/three/addons/loaders/GLTFLoader.js",
     "src/dashboard/static/vendor/three/addons/controls/OrbitControls.js",
@@ -31,14 +31,14 @@ def main(argv):
     pattern = argv[0] if argv else os.path.join(root, "dist", "*.whl")
     wheels = sorted(glob.glob(pattern))
     if not wheels:
-        print("ECHEC: aucun wheel trouve (" + pattern + ")")
+        print("FAILURE: no wheel found (" + pattern + ")")
         return 1
     wheel = wheels[-1]
     names = zipfile.ZipFile(wheel).namelist()
 
     missing = [r for r in REQUIRED if not any(n.endswith(r) for n in names)]
     if missing:
-        print("ECHEC: assets manquants dans " + os.path.basename(wheel))
+        print("FAILED: assets missing in " + os.path.basename(wheel))
         for m in missing:
             print("  - " + m)
         return 1
@@ -50,14 +50,14 @@ def main(argv):
                 dirty.append(n)
                 break
     if dirty:
-        print("ECHEC: fichiers indesirables dans le wheel:")
+        print("FAILED: unwanted files in wheel:")
         for d in sorted(set(dirty))[:20]:
             print("  - " + d)
         return 1
 
     size = sum(i.file_size for i in zipfile.ZipFile(wheel).infolist())
     print(
-        "OK: wheel {0} - {1} fichiers, {2:.1f} Mo, assets dashboard + three.js inclus".format(
+        "OK: wheel {0} - {1} files, {2:.1f} MB, assets dashboard + three.js included".format(
             os.path.basename(wheel), len(names), size / (1024 * 1024)
         )
     )

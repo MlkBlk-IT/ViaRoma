@@ -1,13 +1,13 @@
-// ViaRoma Architecture — graphe d'orchestration LIVE.
+// ViaRoma Architecture — LIVE orchestration graph.
 //
-// Ce graphe ne dessine PAS une ambition: il dessine ce qui existe et TOURNE.
-// Chaque noeud est une brique reelle du code (CascadeManager, SessionManager,
-// EgressLanes, adaptateurs, outils MCP) et chaque noeud est cliquable:
-// il ouvre sa fiche avec ses donnees REELLS et ses actions executables.
+// This graph does NOT draw an ambition: it draws what exists and ROTATES.
+// Each node is a real brick of the code (CascadeManager, SessionManager,
+// EgressLanes, adapters, MCP tools) and each node is clickable:
+// he opens his file with his REAL data and his executable actions.
 //
-// La direction des fleches est le sens du flux reel:
-//   requete -> CascadeManager -> adaptateur -> egress (IP du compte)
-//           -> reponse -> synthese -> reponse finale
+// The direction of the arrows is the direction of the actual flow:
+//   request -> CascadeManager -> adapter -> egress (account IP)
+//           -> answer -> summary -> final answer
 (function () {
   'use strict';
 
@@ -19,7 +19,7 @@
     violet: '#5B3A72', line: 'rgba(42,31,26,.22)'
   };
 
-  // ── Helpers de dessin ────────────────────────────────────────────────
+  // ── Drawing helpers ──────────────────────── ────────────────────────
   const T = (x, y, txt, cls, anchor) =>
     `<text x="${x}" y="${y}" class="${cls || 'a-t'}" text-anchor="${anchor || 'start'}">${esc(txt)}</text>`;
 
@@ -35,7 +35,7 @@
       ${T(x + 16, y + 23, title.toUpperCase(), 'a-h')}
       ${sub ? T(x + w - 14, y + 23, sub, 'a-sub', 'end') : ''}
       ${body}
-      <text x="${x + w - 14}" y="${y + h - 12}" class="a-cta" text-anchor="end">voir le detail ›</text>
+      <text x="${x + w - 14}" y="${y + h - 12}" class="a-cta" text-anchor="end">see details ›</text>
     </g>`;
   }
 
@@ -52,7 +52,7 @@
     return `M ${x1} ${y1} C ${x1} ${y1 + dy}, ${x2} ${y2 - dy}, ${x2} ${y2}`;
   };
 
-  // ── Donnees reelles -> noeuds ─────────────────────────────────────────
+  // ── Real data -> nodes ──────────────────── ─────────────────────
   function build(data) {
     const cascade = data.cascade || {};
     const chain = cascade.fallback_chain || [];
@@ -64,8 +64,8 @@
     const hun = (data.hunter && data.hunter.stats) || {};
     const eg = (data.egress && data.egress.stats) || {};
 
-    // Les providers routables: d'abord la chaine de fallback (ce qui part
-    // reellement), puis le routage securite. Jamais de provider invente.
+    // Routable providers: d'abord la chaine de fallback (ce qui part
+    // actually), then security routing. No provider ever invents.
     const routable = [];
     chain.forEach(c => {
       if (!routable.find(p => p.label === c.name)) {
@@ -100,8 +100,8 @@
     parts.push(`<g class="a-legend">
       <rect x="34" y="30" width="250" height="212" rx="12" class="a-box" style="stroke:${ROMA.gold}"/>
       ${T(52, 56, 'LEGENDE', 'a-h', 'start')}
-      ${[['Delegation', 'delegate'], ['Statut / resultats', 'status'], ['Memoire R/W', 'mem'],
-         ['Acces outils', 'tool'], ['Egress (IP du compte)', 'egress'], ['Flux de reponse', 'result']]
+      ${[['Delegation', 'delegate'], ['Status / results', 'status'], ['R/W memory', 'mem'],
+         ['Tool access', 'tool'], ['Egress (account IP)', 'egress'], ['Response flow', 'result']]
         .map((l, i) => `<line x1="54" y1="${78 + i * 27}" x2="104" y2="${78 + i * 27}" class="a-line a-${l[1]}"/>
                         ${T(116, 83 + i * 27, l[0], 'a-li')}`).join('')}
     </g>`);
@@ -114,10 +114,10 @@
       title: 'Manager / Superviseur — CascadeManager',
       sub: `${Object.keys(cascade.providers || {}).length || 0} providers`,
       lines: [
-        'Chaine de fallback: requete -> provider -> reponse',
+        'Fallback chain: request -> provider -> response',
         'Circuit breakers: open / half-open / closed',
-        'Rotation multi-comptes sur 429 (rate limit)',
-        'Fail-closed: aucun appel sans proxy de sortie'
+        'Multi-account rotation on 429 (rate limit)',
+        'Fail-closed: no calls without exit proxy'
       ]
     }));
 
@@ -131,10 +131,10 @@
         title: p.label,
         sub: up,
         lines: [
-          `Compte: ${p.account || '—'}`,
+          `Account: ${p.account || '—'}`,
           `Egress: ${p.egress ? 'actif (IP dediee)' : 'ABSENT'}`,
           `TLS: ${p.tls || '—'} · cookies: ${p.cookies}`,
-          `Latence: ${p.latency ? Math.round(p.latency) + ' ms' : '—'} · requetes: ${p.reqs || 0}`
+          `Latence: ${p.latency ? Math.round(p.latency) + ' ms' : '—'} · requests: ${p.reqs || 0}`
         ]
       }));
     });
@@ -158,26 +158,26 @@
       sub: `${lanes.length} lanes`,
       lines: [
         `Pool: ${eg.pool_size || 0} proxies · ${eg.usable || 0} utilisables`,
-        `Brûlures: ${eg.burns || 0} · sondes: ${eg.probes || 0}`,
-        'Une IP de sortie par compte',
-        'Le proxy est transmis au couche HTTP'
+        `Burns: ${eg.burns || 0} · probes: ${eg.probes || 0}`,
+        'One exit IP per account',
+        'The proxy is transmitted to the HTTP layer'
       ]
     }));
     parts.push(node({
       id: 'memory', x: 610, y: 580, w: 380, h: 186, tone: 'gold',
-      title: 'Memoire partagee — SessionManager',
+      title: 'Shared memory — SessionManager',
       sub: `${sess.total_sessions || 0} sessions`,
       lines: [
-        `Comptes charges: ${sess.total_accounts || 0}`,
-        'Cookies recoltes (jar) par compte',
-        'Identites: UA / TLS / viewport / locale',
-        `Catalogue: ${hun.total_models || 0} modeles`
+        `Accounts loaded: ${sess.total_accounts || 0}`,
+        'Cookies harvested (jar) per account',
+        'Identities: UA / TLS / viewport / local',
+        `Catalog: ${hun.total_models || 0} models`
       ]
     }));
     parts.push(node({
       id: 'tools', x: 1070, y: 580, w: 380, h: 186, tone: 'teal',
-      title: 'Registre d\'outils — MCP + API',
-      sub: '5 outils',
+      title: 'Tool registry — MCP + API',
+      sub: '5 tools',
       lines: [
         'chat · connect_provider · list_providers',
         'list_free_models · session_status',
@@ -186,21 +186,21 @@
       ]
     }));
 
-    // ── Synthese / reponse finale ─────────────────────────────────────
+    // ── Summary / final answer ─────────────────────────────────────
     parts.push(node({
       id: 'synthesis', x: 600, y: 826, w: 400, h: 116, tone: 'violet',
-      title: 'Synthese du resultat',
+      title: 'Summary of the result',
       sub: 'cascade',
-      lines: ['Agit les chunks du provider retenu', 'Assemble la reponse finale']
+      lines: ['Acts on the chunks of the selected provider', 'Assemble the final answer']
     }));
     parts.push(node({
       id: 'response', x: 600, y: 972, w: 400, h: 100, tone: 'red',
-      title: 'Reponse finale',
+      title: 'Final answer',
       sub: 'OpenAI-compatible',
-      lines: ['choices[0].message.content', 'SSE streaming ou JSON']
+      lines: ['choices[0].message.content', 'SSE streaming or JSON']
     }));
 
-    // ── Arêtes ─────────────────────────────────────────────────────────
+    // ── Edges ──────────────────────────── ─────────────────────────────
     const E = [];
     // Delegation: manager -> providers
     shown.forEach((p, i) => {
@@ -213,29 +213,29 @@
     shown.forEach((p, i) => {
       E.push({ d: arrow(px[i] + 150, 468, px[i] + 150, 576, 40), kind: 'egress' });
     });
-    // Memoire: bidirectional memory <-> providers
+    // Memory: bidirectional memory <-> providers
     shown.forEach((p, i) => {
       const y = 520;
       E.push({ d: arrow(800, 576, px[i] + 150, 470, -34), kind: 'mem' });
       E.push({ d: arrow(px[i] + 150, 470, 800, 576, -34), kind: 'mem' });
       void y;
     });
-    // Outils: manager -> tools
-    E.push({ d: arrow(mgrX + mgrW, 110, 1260, 576, -80), kind: 'tool', label: 'OUTILS', lx: 1120, ly: 400 });
-    // Resultat: providers -> synthese
+    // Tools: manager -> tools
+    E.push({ d: arrow(mgrX + mgrW, 110, 1260, 576, -80), kind: 'tool', label: 'TOOLS', lx: 1120, ly: 400 });
+    // Result: providers -> synthesis
     shown.forEach((p, i) => {
-      E.push({ d: arrow(px[i] + 150, 468, 800, 822, 90), kind: 'result', label: 'RESULTAT', lx: 700, ly: 740 });
+      E.push({ d: arrow(px[i] + 150, 468, 800, 822, 90), kind: 'result', label: 'RESULT', lx: 700, ly: 740 });
     });
-    // Reponse finale
+    // Final answer
     E.push({ d: arrow(800, 946, 800, 968, 0), kind: 'result' });
 
     parts.push(`<svg class="a-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img"
-      aria-label="Graphe d'orchestration ViaRoma">${E.map(edge).join('')}${parts.join('')}</svg>`);
+      aria-label="ViaRoma orchestration graph">${E.map(edge).join('')}${parts.join('')}</svg>`);
 
     return { svg: parts.join(''), routable, shown, extra };
   }
 
-  // ── Fiches cliquables (donnees reelles) ──────────────────────────────
+  // ── Clickable cards (real data) ──────────────────────────────
   function openNode(id, data) {
     if (!window.RomaDrawer) return;
     const R = window.RomaDrawer.rows;
@@ -256,16 +256,16 @@
         kicker: 'Manager / Superviseur', title: 'CascadeManager',
         body: R([
           ['Providers routes', Object.keys(stats).length],
-          ['Chaine de fallback', (cascade.fallback_chain || []).length],
+          ['Fallback chain', (cascade.fallback_chain || []).length],
           ['Max retries', (cascade.config || {}).max_retries],
-          ['Comptes ecartes', skipped.length],
+          ['Skipped accounts', skipped.length],
           ['Fail-closed', skipped.every(s => !/aucun proxy/.test(s.reason || '')) ? 'actif' : 'partiel']
-        ]) + '<p class="drawer-note">Le superviseur decompose la requete en chaine de fallback, surveille les breakers et fait tourner les comptes quand un provider rate-limite.</p>'
+        ]) + '<p class="drawer-note">The supervisor decomposes the request into a fallback chain, monitors the breakers and rotates the accounts when a provider misses the limit.</p>'
           + '<div class="drawer-rows">' + Object.keys(stats).map(k =>
             `<div class="drawer-row"><span class="k">${esc(k)}</span><span class="v">${esc(JSON.stringify(stats[k]))}</span></div>`).join('') + '</div>',
         actions: [
-          { label: '⚡ Recharger la cascade', action: 'cascade-refresh', kind: 'primary' },
-          { label: '✕ Fermer', action: 'drawer-close' }
+          { label: '⚡ Recharge the waterfall', action: 'cascade-refresh', kind: 'primary' },
+          { label: '✕ Close', action: 'drawer-close' }
         ]
       });
       return;
@@ -280,24 +280,24 @@
       window.RomaDrawer.open({
         kicker: 'Adaptateur', title: label,
         body: R([
-          ['Cle technique', r.provider_key || '—'],
-          ['Compte', r.account_id || '—'],
+          ['Technical key', r.provider_key || '—'],
+          ['Account', r.account_id || '—'],
           ['Egress', r.egress ? 'actif' : 'ABSENT (fail-closed)'],
-          ['Profil TLS', r.tls_profile || '—'],
+          ['TLS profile', r.tls_profile || '—'],
           ['User-Agent', r.user_agent || '—'],
           ['Locale', r.locale || '—'],
-          ['Cookies dans le jar', r.cookie_count],
+          ['Cookies in the jar', r.cookie_count],
           ['Score', r.score],
-          ['Etat du breaker', c.state || '—'],
-          ['Taux de succes', c.success_rate != null ? (c.success_rate * 100).toFixed(1) + ' %' : '—'],
-          ['Latence moyenne', c.avg_latency_ms != null ? Math.round(c.avg_latency_ms) + ' ms' : '—'],
-          ['Requetes', c.total_requests || 0],
+          ['Breaker status', c.state || '—'],
+          ['Success rate', c.success_rate != null ? (c.success_rate * 100).toFixed(1) + ' %' : '—'],
+          ['Average latency', c.avg_latency_ms != null ? Math.round(c.avg_latency_ms) + ' ms' : '—'],
+          ['Requests', c.total_requests || 0],
           ['Echecs consecutifs', c.consecutive_failures || 0]
-        ]) + '<p class="drawer-note">Aucune valeur de cookie n\'est renvoyee par l\'API: les secrets restent sur la machine.</p>',
+        ]) + '<p class="drawer-note">No cookie value is returned by the API: the secrets remain on the machine.</p>',
         actions: [
-          { label: '⚡ Recharger le breaker', action: 'cascade-reset-one', data: { name: label }, kind: 'primary' },
-          { label: '🔌 Connecter / configurer', action: 'provider-detail', data: { key: r.provider_key || '' } },
-          { label: '✕ Fermer', action: 'drawer-close' }
+          { label: '⚡ Reload the breaker', action: 'cascade-reset-one', data: { name: label }, kind: 'primary' },
+          { label: '🔌 Connect / configure', action: 'provider-detail', data: { key: r.provider_key || '' } },
+          { label: '✕ Close', action: 'drawer-close' }
         ]
       });
       return;
@@ -305,11 +305,11 @@
 
     if (id === 'providers') {
       window.RomaDrawer.open({
-        kicker: 'Routage', title: 'Tous les providers',
+        kicker: 'Routage', title: 'All providers',
         body: '<div class="drawer-rows">' + provs.map(p =>
           `<div class="drawer-row"><span class="k">${esc(p.label)}</span><span class="v">${esc(p.account_id || '—')} · egress: ${p.egress ? 'oui' : 'NON'}</span></div>`).join('') + '</div>'
-          + (skipped.length ? '<p class="drawer-note">Comptes ecartes: ' + esc(skipped.map(s => s.account_id).join(', ')) + '</p>' : ''),
-        actions: [{ label: '✕ Fermer', action: 'drawer-close' }]
+          + (skipped.length ? '<p class="drawer-note">Skipped accounts: ' + esc(skipped.map(s => s.account_id).join(', ')) + '</p>' : ''),
+        actions: [{ label: '✕ Close', action: 'drawer-close' }]
       });
       return;
     }
@@ -319,12 +319,12 @@
         kicker: 'Egress', title: "Lanes d'IP",
         body: R([
           ['Pool', eg.pool_size || 0], ['Utilisables', eg.usable || 0], ['Morts', eg.dead || 0],
-          ['Quarantaine', eg.quarantined || 0], ['Brulures', eg.burns || 0], ['Sondes', eg.probes || 0]
+          ['Quarantined', eg.quarantined || 0], ['Burns', eg.burns || 0], ['Probes', eg.probes || 0]
         ]) + '<div class="drawer-rows">' + lanes.map(l =>
           `<div class="drawer-row"><span class="k">${esc(l.account_id)}</span><span class="v">${esc(l.public_ip || 'IP non resolue')} · ${esc(l.country || '—')} · ${esc(l.lane_state || '')}</span></div>`).join('') + '</div>',
         actions: [
-          { label: '🔄 Tester le pool', action: 'egress-probe', kind: 'primary' },
-          { label: '✕ Fermer', action: 'drawer-close' }
+          { label: '🔄 Test the pool', action: 'egress-probe', kind: 'primary' },
+          { label: '✕ Close', action: 'drawer-close' }
         ]
       });
       return;
@@ -332,18 +332,18 @@
 
     if (id === 'memory') {
       window.RomaDrawer.open({
-        kicker: 'Memoire partagee', title: 'SessionManager',
+        kicker: 'Shared memory', title: 'SessionManager',
         body: R([
-          ['Comptes charges', sess.total_accounts || 0],
+          ['Accounts loaded', sess.total_accounts || 0],
           ['Sessions', sess.total_sessions || 0],
-          ['Par etat', JSON.stringify(sess.by_state || {})],
+          ['By state', JSON.stringify(sess.by_state || {})],
           ['Par provider', JSON.stringify(sess.by_provider || {})],
-          ['Catalogue', hun.total_models || 0],
+          ['Catalog', hun.total_models || 0],
           ['Frontier', hun.active_frontier || 0]
-        ]) + '<p class="drawer-note">La memoire porte le jar de cookies recolte, les identites (UA/TLS/viewport/locale) et l\'etat de rotation par compte.</p>',
+        ]) + '<p class="drawer-note">The memory carries the harvested cookie jar, the identities (UA/TLS/viewport/locale) and the rotation state by account.</p>',
         actions: [
-          { label: '📱 Faire tourner une identite', action: 'identity-rotate-open' },
-          { label: '✕ Fermer', action: 'drawer-close' }
+          { label: '📱 Rotate an identity', action: 'identity-rotate-open' },
+          { label: '✕ Close', action: 'drawer-close' }
         ]
       });
       return;
@@ -351,43 +351,43 @@
 
     if (id === 'tools') {
       window.RomaDrawer.open({
-        kicker: 'Registre d\'outils', title: 'MCP + API',
+        kicker: 'Tool registry', title: 'MCP + API',
         body: '<div class="drawer-rows">'
-          + ['chat — Envoie un message a l\'IA et retourne la reponse texte.',
-             'connect_provider — Connecte un compte a un provider (une seule fois).',
-             'list_providers — Liste les providers connus et leur etat de connexion.',
-             'list_free_models — Liste les modeles gratuits decouverts, filtres par tier.',
-             'session_status — Etat live du routage: providers, sessions, lanes egress, IPs, burns.'
+          + ['chat — Sends a message to the AI ​​and returns the text response.',
+             'connect_provider — Connects an account to a provider (once).',
+             'list_providers — Lists known providers and their connection status.',
+             'list_free_models — List of free models discovered, filtered by tier.',
+             'session_status — Live routing status: providers, sessions, lanes egress, IPs, burns.'
             ].map(t => `<div class="drawer-row"><span class="k">${esc(t.split('—')[0].trim())}</span><span class="v">${esc(t.split('—')[1] || '')}</span></div>`).join('')
-          + '</div><p class="drawer-note">Transport MCP: stdio. API HTTP: /v1/chat/completions (compatible OpenAI) et /api/dashboard/* pour le dashboard.</p>',
-        actions: [{ label: '✕ Fermer', action: 'drawer-close' }]
+          + '</div><p class="drawer-note">MCP transport: stdio. HTTP API: /v1/chat/completions (OpenAI compatible) and /api/dashboard/* for the dashboard.</p>',
+        actions: [{ label: '✕ Close', action: 'drawer-close' }]
       });
       return;
     }
 
     if (id === 'synthesis') {
       window.RomaDrawer.open({
-        kicker: 'Synthese', title: 'Synthese du resultat',
+        kicker: 'Synthese', title: 'Summary of the result',
         body: R([
-          ['Providers dans la chaine', (cascade.fallback_chain || []).length],
+          ['Providers in the chain', (cascade.fallback_chain || []).length],
           ['Ordre', (cascade.fallback_chain || []).map(c => c.name).join(' → ') || '—'],
           ['Retries max', (cascade.config || {}).max_retries]
-        ]) + '<p class="drawer-note">La synthese ne cree rien: elle concatene les chunks du provider reellement retenu par le superviseur.</p>',
-        actions: [{ label: '✕ Fermer', action: 'drawer-close' }]
+        ]) + '<p class="drawer-note">The synthesis does not create anything: it concatenates the chunks of the provider actually retained by the supervisor.</p>',
+        actions: [{ label: '✕ Close', action: 'drawer-close' }]
       });
       return;
     }
 
     if (id === 'response') {
       window.RomaDrawer.open({
-        kicker: 'Sortie', title: 'Reponse finale',
+        kicker: 'Output', title: 'Final answer',
         body: R([
           ['Format', 'OpenAI chat.completion'],
           ['Streaming SSE', 'oui (data: [DONE])'],
-          ['Modele', 'frontier-auto par defaut'],
-          ['Erreur cascade', '503 JSON si tous les providers echouent']
-        ]) + '<pre class="drawer-code">POST /v1/chat/completions\n{\n  "model": "frontier-auto",\n  "messages": [{"role": "user", "content": "..."}]\n}</pre>',
-        actions: [{ label: '✕ Fermer', action: 'drawer-close' }]
+          ['Model', 'frontier-auto by default'],
+          ['Cascade error', '503 JSON if all providers fail']
+        ]) + '<pre class="drawer-code">POST /v1/chat/completions\n{\n "model": "frontier-auto",\n "messages": [{"role": "user", "content": "..."}]\n}</pre>',
+        actions: [{ label: '✕ Close', action: 'drawer-close' }]
       });
       return;
     }

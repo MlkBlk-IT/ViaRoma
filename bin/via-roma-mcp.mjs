@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// via-roma-mcp: lance le serveur MCP (stdio) de ViaRoma.
+// via-roma-mcp: launches the ViaRoma MCP (stdio) server.
 //
-// Le protocole MCP parle sur stdout. Ce lanceur ne doit donc JAMAIS ecrire
-// sur stdout: stdio est herite tel quel par le processus Python, et tous les
+// The MCP protocol speaks to stdout. This launcher must therefore NEVER write
+// on stdout: stdio is inherited as is by the Python process, and all
 // diagnostics partent sur stderr.
 import { spawn } from "node:child_process";
 import { prepare, childEnv, homeDir, eprint } from "./_python.mjs";
@@ -18,7 +18,7 @@ const child = spawn(py.cmd, [...py.args, "-m", "src.mcp_server", ...args], {
 });
 
 child.on("error", (err) => {
-  eprint("[via-roma] Impossible de lancer le serveur MCP: " + err.message);
+  eprint("[via-roma] Unable to launch MCP server: " + err.message);
   process.exit(1);
 });
 

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>ViaRoma — ce que c'est</title>
+<title>ViaRoma — what it is</title>
 <style>
   :root {
     --gold:#c69b4a; --gold-hi:#e6c789; --gold-deep:#8d6a2c;
@@ -63,7 +63,7 @@
   .step .tag { margin-top:12px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-deep); }
   .arrow { width:34px; display:flex; align-items:center; justify-content:center; color:var(--gold); font-size:26px; opacity:.75; }
 
-  /* ── Grille de chiffres ──────────────────────────────────── */
+  /* ── Number grid ──────────────────────────────────── */
   .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
   .stat {
     background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
@@ -115,106 +115,106 @@
       <h1>VIAROMA</h1>
       <div class="rule"></div>
       <div class="sub">
-        Un <b>MCP</b> et une API <b>OpenAI-compatible</b> qui routent une requête vers un
-        modèle frontier gratuit : cascade avec circuit breaker, egress IP jetable,
-        sessions persistantes. Chaque clic du dashboard est une action réelle.
+        A <b>MCP</b> and an API <b>OpenAI-compatible</b> which route a request to a
+        free frontier model: cascade with circuit breaker, disposable IP egress,
+        persist sessions. Each click on the dashboard is a real action.
       </div>
     </div>
     <div class="badge">
-      ⛔ Alpha — ne pas utiliser
-      <small>1 adapter validé sur 15</small>
+      ⛔ Alpha — do not use
+      <small>1 adapter validated out of 15</small>
     </div>
   </header>
 
   <section class="band">
-    <div class="band-t">Le trajet d'une requête</div>
+    <div class="band-t">The path of a request</div>
     <div class="flow">
       <div class="step">
         <span class="n">01</span>
-        <h3>Requête</h3>
-        <p>POST <code style="color:var(--gold-hi)">/v1/chat/completions</code> — format OpenAI, SSE en sortie. Un client MCP appelle <code style="color:var(--gold-hi)">chat</code>.</p>
+        <h3>Request</h3>
+        <p>POST <code style="color:var(--gold-hi)">/v1/chat/completions</code> — OpenAI format, SSE output. An MCP customer calls <code style="color:var(--gold-hi)">chat</code>.</p>
         <div class="tag">HTTP · MCP stdio</div>
       </div>
       <div class="arrow">→</div>
       <div class="step">
         <span class="n">02</span>
         <h3>Cascade</h3>
-        <p>Chaque provider a son compteur d'échecs : 5 échecs → circuit ouvert, puis test en demi-ouvert. Backoff exponentiel.</p>
+        <p>Each provider has its failure counter: 5 failures → open circuit, then half-open test. Exponential backoff.</p>
         <div class="tag">circuit breaker</div>
       </div>
       <div class="arrow">→</div>
       <div class="step">
         <span class="n">03</span>
         <h3>Fronts web</h3>
-        <p>15 adaptateurs (Claude, Gemini, ChatGPT, Grok, Kimi, DeepSeek…) : URL, payload, en-têtes et parser SSE propres à chaque front.</p>
+        <p>15 adapters (Claude, Gemini, ChatGPT, Grok, Kimi, DeepSeek, etc.): URL, payload, headers and SSE parser specific to each front.</p>
         <div class="tag">adaptateurs</div>
       </div>
       <div class="arrow">→</div>
       <div class="step">
         <span class="n">04</span>
         <h3>Egress IP</h3>
-        <p>Une lane par compte, adossée à un proxy du pool. Le trafic sort par le proxy : l'IP de la machine ne part jamais. 403/429 → burn de lane, cookie intact.</p>
+        <p>One lane per account, backed by a pool proxy. The traffic goes out through the proxy: the machine's IP never leaves. 403/429 → lane burn, cookie intact.</p>
         <div class="tag">fail-closed</div>
       </div>
       <div class="arrow">→</div>
       <div class="step">
         <span class="n">05</span>
-        <h3>Réponse</h3>
-        <p>Le flux SSE du front est reparsé et réémis en OpenAI. Erreur = message propre, jamais de traceback.</p>
+        <h3>Answer</h3>
+        <p>The SSE flow from the front is reparsed and retransmitted in OpenAI. Error = clean message, never traceback.</p>
         <div class="tag">SSE</div>
       </div>
     </div>
   </section>
 
   <section class="band">
-    <div class="band-t">L'état réel, mesuré</div>
+    <div class="band-t">The actual state, measured</div>
     <div class="grid">
-      <div class="stat"><div class="v">2 094</div><div class="k"><b>modèles</b> au catalogue, découverts en scannant les sources publiques</div></div>
-      <div class="stat"><div class="v">304</div><div class="k"><b>modèles frontier</b> (tier le plus haut)</div></div>
-      <div class="stat"><div class="v">21</div><div class="k"><b>dépôts GGUF</b> avec vrais fichiers de quantification et URL</div></div>
-      <div class="stat"><div class="v">16</div><div class="k"><b>onglets</b> de dashboard, chaque action = une vraie requête</div></div>
-      <div class="stat"><div class="v">5</div><div class="k"><b>outils MCP</b> : chat, connect_provider, list_providers, list_free_models, session_status</div></div>
-      <div class="stat"><div class="v">3</div><div class="k"><b>lanes egress</b> actives, pool de 102 proxies sondés</div></div>
-      <div class="stat"><div class="v">142</div><div class="k"><b>vérifications</b> automatisées, 5 suites, CI verte à chaque commit</div></div>
-      <div class="stat"><div class="v">0</div><div class="k"><b>secret</b> dans le dépôt : scanner de secrets + hook pre-commit</div></div>
+      <div class="stat"><div class="v">2 094</div><div class="k"><b>models</b> in the catalog, discovered by scanning public sources</div></div>
+      <div class="stat"><div class="v">304</div><div class="k"><b>frontier models</b> (highest tier)</div></div>
+      <div class="stat"><div class="v">21</div><div class="k"><b>GGUF deposits</b> with real quantization files and URL</div></div>
+      <div class="stat"><div class="v">16</div><div class="k"><b>tabs</b> dashboard, each action = a real request</div></div>
+      <div class="stat"><div class="v">5</div><div class="k"><b>MCP tools</b> : chat, connect_provider, list_providers, list_free_models, session_status</div></div>
+      <div class="stat"><div class="v">3</div><div class="k"><b>lanes egress</b> active, pool of 102 proxies probed</div></div>
+      <div class="stat"><div class="v">142</div><div class="k"><b>checks</b> automated, 5 suites, green CI on each commit</div></div>
+      <div class="stat"><div class="v">0</div><div class="k"><b>secret</b> in the repository: secrets scanner + pre-commit hook</div></div>
     </div>
   </section>
 
   <section class="band">
-    <div class="band-t">Le catalogue, sans valeur inventée</div>
+    <div class="band-t">The catalog, without invented value</div>
     <div class="origins">
-      <div class="o"><div class="lab">Amérique du Nord</div><div class="bar"><div class="fill" style="width:100%"></div></div><div class="n">1 116</div></div>
+      <div class="o"><div class="lab">North America</div><div class="bar"><div class="fill" style="width:100%"></div></div><div class="n">1 116</div></div>
       <div class="o"><div class="lab">Chine</div><div class="bar"><div class="fill" style="width:35.7%"></div></div><div class="n">399</div></div>
-      <div class="o"><div class="lab">Autres régions</div><div class="bar"><div class="fill" style="width:45.7%"></div></div><div class="n">511</div></div>
+      <div class="o"><div class="lab">Other regions</div><div class="bar"><div class="fill" style="width:45.7%"></div></div><div class="n">511</div></div>
       <div class="o"><div class="lab">Europe</div><div class="bar"><div class="fill" style="width:5.9%"></div></div><div class="n">66</div></div>
       <div class="o"><div class="lab">Canada</div><div class="bar"><div class="fill" style="width:0.8%"></div></div><div class="n">9</div></div>
-      <div class="o"><div class="lab">Israël</div><div class="bar"><div class="fill" style="width:0.2%"></div></div><div class="n">2</div></div>
+      <div class="o"><div class="lab">Israel</div><div class="bar"><div class="fill" style="width:0.2%"></div></div><div class="n">2</div></div>
     </div>
     <div class="note">
-      Fenêtre de contexte : <b>la valeur réelle, ou « non publiée par la source »</b> — jamais une valeur par défaut.
-      Un ancien <code>32768</code> en dur sur 2 000 modèles a été supprimé ; chaque valeur porte sa provenance
-      (<code>ctx_source</code> : métadonnées GGUF, OpenRouter, etc.).
+      Context window: <b>the real value, or “not published by the source”</b> — never a default value.
+      An old <code>32768</code> hard-coded on 2,000 models has been removed; each value bears its origin
+      (<code>ctx_source</code> : GGUF metadata, OpenRouter, etc.).
     </div>
   </section>
 
   <section class="band">
     <div class="cols">
       <div class="card safe">
-        <h4>Ce qui est vérifié, en exécution</h4>
+        <h4>What is verified, in execution</h4>
         <ul>
-          <li><b>L'IP de la machine ne sort jamais</b> — 5 niveaux de preuve automatisés : structure fail-closed, transport curl_cffi, transport aiohttp, cible ≠ proxy, IP absente du dépôt, des lanes et des logs.</li>
-          <li><b>Les credentials ne fuient pas</b> — jamais dans un fichier versionné : ils vont dans <code>data/creds/</code> (gitignoré), le YAML ne porte qu'une référence <code>env:</code> ou <code>file:</code>.</li>
-          <li><b>La cascade brûle la lane</b> sur 403/429 et garde le compte intact.</li>
-          <li><b>Chaque clic du dashboard</b> déclenche une action réelle — un clic muet est un bug, pas un design.</li>
+          <li><b>The machine's IP never comes out</b> — 5 automated levels of proof: fail-closed structure, curl_cffi transport, aiohttp transport, target ≠ proxy, IP absent from the repository, lanes and logs.</li>
+          <li><b>Credentials do not leak</b> — never in a versioned file: they go in <code>data/creds/</code> (git ignored), the YAML only carries a reference <code>env:</code> Or <code>file:</code>.</li>
+          <li><b>The waterfall burns the lane</b> on 403/429 and keeps the account intact.</li>
+          <li><b>Each click of the dashboard</b> triggers a real action — a mute click is a bug, not a design.</li>
         </ul>
       </div>
       <div class="card truth">
-        <h4>Ce qui n'est pas démontré</h4>
+        <h4>What is not demonstrated</h4>
         <ul>
-          <li><b>Une complétion réelle</b> : 1 adapter sur 15 validé contre son front. Les 14 autres ont une URL, un payload et un parser SSE corrects, mais n'ont jamais répondu.</li>
-          <li><b>Le contournement anti-WAF n'a jamais tourné</b> contre un vrai site.</li>
-          <li><b>Aucun credential n'est fourni</b> : sans <code>data/creds/&lt;compte&gt;.json</code>, le chat renvoie un 503 propre — c'est voulu.</li>
-          <li><b>Fronts web uniquement</b> : pas de support desktop/CLI, et la CI ne teste que le code hors-ligne.</li>
+          <li><b>A real completion</b> : 1 adapter out of 15 validated against his forehead. The other 14 have a correct URL, payload and SSE parser, but never responded.</li>
+          <li><b>Anti-WAF bypass never worked</b> against a real site.</li>
+          <li><b>No credential is provided</b> : without <code>data/creds/&lt;account&gt;.json</code>, the cat returns a clean 503 — this is intentional.</li>
+          <li><b>Fronts web uniquement</b> : no desktop/CLI support, and CI only tests code offline.</li>
         </ul>
       </div>
     </div>
@@ -222,12 +222,12 @@
 
   <footer>
     <div class="l">
-      github.com/MlkBlk-IT/ViaRoma · licence propriétaire (tous droits réservés)<br>
-      Modèle 3D : Colosseum.how (Anfiteatro Flavio) — attribution requise · three.js vendé localement
+      github.com/MlkBlk-IT/ViaRoma · proprietary license (all rights reserved)<br>
+      3D model: Colosseum.how (Anfiteatro Flavio) — attribution required · three.js sold locally
     </div>
     <div class="r">
-      5 suites · 142 vérifications · CI verte<br>
-      état au 27-10-2026
+      5 suites · 142 checks · Green CI<br>
+      status as of 10/27/2026
     </div>
   </footer>
 </div>

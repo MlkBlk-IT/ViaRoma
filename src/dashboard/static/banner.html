@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>ViaRoma — bannière</title>
+<title>ViaRoma — banner</title>
 <style>
   :root {
     --gold: #c69b4a;
@@ -17,12 +17,12 @@
 
   .stage { position: relative; width: 1600px; height: 640px; overflow: hidden; }
 
-  /* ── Rendu 3D reel (modele GLB) ─────────────────────────────────── */
+  /* ── Real 3D rendering (GLB model) ─────────────────────────────────── */
   #colosseum {
     position: absolute; inset: 0; width: 1600px; height: 640px; display: block;
   }
 
-  /* ── Voile pour la lisibilite du texte ─────────────────────────── */
+  /* ── Veil for text readability ─────────────────────────── */
   .scrim {
     position: absolute; inset: 0;
     background:
@@ -97,25 +97,25 @@
     <h1>VIAROMA</h1>
     <div class="rule"></div>
     <div class="tagline">
-      Un <b>MCP</b> + une API <b>OpenAI-compatible</b> qui routent vers les modèles
-      frontier gratuits : egress IP jetable, sessions persistantes, cascade automatique.
+      An <b>MCP</b> server and an <b>OpenAI-compatible</b> API that route you to
+      free frontier models: disposable IP egress, persistent sessions, automatic cascade.
     </div>
     <div class="chips">
-      <div class="chip">MCP · 5 outils</div>
+      <div class="chip">MCP · 5 tools</div>
       <div class="chip">fail-closed strict</div>
-      <div class="chip">catalogue honnête</div>
-      <div class="chip">dashboard Roma Aeterna</div>
+      <div class="chip">honest catalog</div>
+      <div class="chip">Roma Aeterna dashboard</div>
     </div>
-    <div class="warn"><span class="dot"></span> Alpha — ce n'est pas prêt, ne pas utiliser</div>
+    <div class="warn"><span class="dot"></span> ALPHA — THIS IS NOT READY, DO NOT USE</div>
   </div>
 
   <div class="seal">Roma<br>Aeterna</div>
-  <div class="credit">Modèle 3D : Colosseum.how (Anfiteatro Flavio) — attribution requise</div>
+  <div class="credit">3D model: Colosseum.how (Anfiteatro Flavio) — attribution required</div>
 </div>
 
 <script src="/dashboard/static/colosseum3d.js?v=12"></script>
 <script>
-  // Camera figee, cadrage 3/4 contre-plongee: le rendu est reproductible.
+  // Camera frozen, 3/4 low angle framing: the result is reproducible.
   window.addEventListener('load', function () {
     setTimeout(function () {
       var c = document.getElementById('colosseum');

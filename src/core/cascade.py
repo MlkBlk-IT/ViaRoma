@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# CIRCUIT BREAKER (fusionne depuis controllers/circuit_breaker.py)
+# CIRCUIT BREAKER (merged since controllers/circuit_breaker.py)
 # ============================================================
 
 class CircuitState(Enum):
@@ -93,7 +93,7 @@ class ChallengeError(ProviderExecutionError):
 
 
 class PermissionError403(ProviderExecutionError):
-    """403 WAF/permission -> signal de burn de lane egress."""
+    """403 WAF/permission -> lane egress burn signal."""
     pass
 
 
@@ -102,7 +102,7 @@ class AllProvidersFailedError(Exception):
 
 
 def load_cascade_yaml(path: str = None) -> Dict[str, Any]:
-    """Charge config/cascade.yaml. Tolérant: fichier absent/illisible -> {}."""
+    """Charge config/cascade.yaml. Tolerant: file missing/unreadable -> {}."""
     path = path or os.path.join(CONFIG_DIR, "cascade.yaml")
     try:
         if not os.path.exists(path):
@@ -128,17 +128,17 @@ class FallbackConfig:
 
 
 class CircuitBreaker:
-    """Circuit Breaker par provider + cascade de fallback."""
+    """Circuit Breaker by provider + fallback cascade."""
 
     def __init__(self, config=None, on_burn=None):
         self.config = config or FallbackConfig()
         self.metrics = {name: ProviderMetrics(name=name) for name in self.config.providers}
         self.on_burn = on_burn  # async callable(account_id, reason) sur 403/429
-        self.active = None  # None = tous les providers connus; sinon liste blanche
+        self.active = None  # None = all known providers; otherwise whitelist
         self._lock = asyncio.Lock()
 
     async def burn_lane(self, account_id, reason):
-        """Notifie le pool egress qu'une lane doit etre brulee (403/429)."""
+        """Notifies the egress pool that a lane must be burned (403/429)."""
         if not self.on_burn or not account_id:
             return None
         try:
@@ -161,10 +161,10 @@ class CircuitBreaker:
         return self.metrics.get(provider)
 
     def set_active_providers(self, names):
-        """Restreint la cascade aux providers reellement actives (contexte de routage).
+        """Restricts the cascade to actually active providers (routing context).
 
-        Un provider sans IP de sortie n'est pas "inactif par erreur": il est
-        volontairement ecarte, sinon la requete partirait sur l'IP reelle.
+        A provider without an exit IP is not "inactive by mistake": it is
+        deliberately excluded, otherwise the request would go to the real IP.
         """
         self.active = list(names) if names is not None else None
 
@@ -179,7 +179,7 @@ class CircuitBreaker:
         return [n for n, _ in available]
 
     async def execute_with_fallback(self, request, executor, on_provider_change=None):
-        """executor(provider, request) -> AsyncGenerator[chunks]. Yield du premier provider qui reussit."""
+        """executor(provider, request) -> AsyncGenerator[chunks]. Yield of the first successful provider."""
         providers = self.get_available_providers()
         if not providers:
             pool = self._pool()
@@ -207,13 +207,13 @@ class CircuitBreaker:
                 except RateLimitError as e:
                     last_error = e
                     metrics.record_failure(is_rate_limit=True, retry_after=e.retry_after)
-                    # Le burn est fait par l'executor, avec l'account_id exact
-                    # du compte qui a ete rate-limite.
+                    # The burn is done by the executor, with the exact account_id
+                    # of the account which has been rate-limited.
                     break
                 except PermissionError403 as e:
                     last_error = e
                     metrics.record_failure()
-                    # Idem: burn fait par l'executor (account_id exact).
+                    # Same: burn done by the executor (exact account_id).
                     break
                 except ChallengeError as e:
                     last_error = e
@@ -232,7 +232,7 @@ class CircuitBreaker:
                 nxt = [p for p in providers if p != provider]
                 on_provider_change(provider, nxt[0] if nxt else "none")
         raise AllProvidersFailedError(
-            "Tous les " + str(len(providers)) + " providers ont echoue. Derniere erreur: " + str(last_error)
+            "All the " + str(len(providers)) + " providers failed. Latest error: " + str(last_error)
         ) from last_error
 
     def force_reset(self, provider):
@@ -256,11 +256,11 @@ class CircuitBreaker:
 
 
 # ============================================================
-# CASCADE MANAGER (point d'entree Roma, branche sur le CircuitBreaker)
+# CASCADE MANAGER (Roma entry point, connected to CircuitBreaker)
 # ============================================================
 
 def _contexts_signature(contexts) -> tuple:
-    """Signature compacte des contextes: dit si un refresh est necessaire."""
+    """Compact signature of contexts: says if a refresh is necessary."""
     out = []
     for ctx in contexts or []:
         creds = ctx.get("creds") or {}
@@ -275,15 +275,15 @@ def _contexts_signature(contexts) -> tuple:
 
 
 class CascadeManager:
-    """Point d'entree historique de Roma, adosse au CircuitBreaker.
-    Conserve la signature d'origine: execute_with_fallback(request).
+    """Historic entry point to Roma, backing onto the CircuitBreaker.
+    Keeps the original signature: execute_with_fallback(request).
 
-    Le routage part du CONTEXTE de chaque compte: IP de sortie (lane egress),
-    profil TLS, User-Agent/locale et cookies. Ces elements viennent du meme
-    compte, sinon il parait "changer de machine" d'une requete a l'autre.
+    Routing starts from the CONTEXT of each account: exit IP (lane egress),
+    TLS profile, User-Agent/locale and cookies. These elements come from the same
+    account, otherwise it appears to "change machines" from one request to another.
 
-    FAIL-CLOSED: un compte sans proxy de sortie est ecarte de la cascade.
-    L'IP reelle de la machine ne partira jamais vers un provider.
+    FAIL-CLOSED: an account without an exit proxy is removed from the cascade.
+    The real IP of the machine will never go to a provider.
     """
 
     def __init__(self, config=None, on_burn=None, load_yaml: bool = True,
@@ -297,24 +297,24 @@ class CascadeManager:
         raw = load_cascade_yaml() if load_yaml else {}
         label_by_key = {k: PROVIDER_META.get(k, {}).get("label", k) for k in PROVIDER_META}
 
-        # --- provider -> account_id (cle du burn de lane) ---
-        # 1) derive de accounts.yaml: chaque provider actif porte son account_id.
+        # --- provider -> account_id (lane burn key) ---
+        # 1) derives from accounts.yaml: each active provider carries its account_id.
         derived = {p.name: p.session_id for p in providers}
-        # 2) cascade.yaml peut surcharger explicitement (cle = provider_key ou label).
+        # 2) cascade.yaml can explicitly override (key = provider_key or label).
         explicit = {}
         for k, v in (raw.get("provider_accounts") or {}).items():
             if v:
                 explicit[label_by_key.get(k, k)] = v
-        # 3) un config passe explicitement par l'appelant reste prioritaire.
+        # 3) a config explicitly passed through the caller remains priority.
         config.provider_accounts = {**derived, **explicit, **provided_accounts}
 
-        # --- parametres du circuit breaker ---
+        # --- circuit breaker parameters ---
         for fname in ("max_retries_per_provider", "base_backoff_seconds", "max_backoff_seconds",
                       "backoff_multiplier", "circuit_breaker_threshold", "half_open_test_requests"):
             if fname in raw:
                 setattr(config, fname, raw[fname])
 
-        # --- providers declares dans cascade.yaml ---
+        # --- providers declared in cascade.yaml ---
         declared = raw.get("providers") or []
         if declared:
             allowed = {label_by_key.get(k, k) for k in declared}
@@ -325,20 +325,20 @@ class CascadeManager:
         self.breaker = CircuitBreaker(config, on_burn=on_burn)
         self.context_provider = context_provider
         self.on_rotate = on_rotate
-        # Sans context_provider (mode historique / tests), les providers YAML
-        # restent en place. Avec, seuls les contextes valides sont executables.
+        # Without context_provider (history mode / tests), YAML providers
+        # remain in place. With this, only valid contexts are executable.
         self._providers = {} if context_provider is not None else {p.name: p for p in providers}
-        self._extra_accounts = {}   # label -> [comptes additionnels du meme provider]
-        self._skipped = []          # comptes ecartes (fail-closed / cooldown)
+        self._extra_accounts = {}   # label -> [additional accounts from the same provider]
+        self._skipped = []          # skipped accounts (fail-closed / cooldown)
         self._ctx_sig = None
 
-    # --- contexte de routage ---
+    # --- routing context ---
 
     def refresh(self, contexts=None, user_agents: Dict[str, str] = None):
-        """Recharge les providers actifs depuis les contextes de routage.
+        """Reloads active providers from routing contexts.
 
-        Chaque contexte porte l'identite complete du compte (IP, TLS, UA,
-        cookies). Sans contexte, on retombe sur la derivation accounts.yaml.
+        Each context carries the complete identity of the account (IP, TLS, UA,
+        cookies). Without context, we fall back on the derivation accounts.yaml.
         """
         if contexts is None and self.context_provider is not None:
             contexts = self.context_provider()
@@ -352,7 +352,7 @@ class CascadeManager:
             self._extra_accounts = {label: lst[1:] for label, lst in by_label.items() if len(lst) > 1}
             for label in self._providers:
                 self.breaker.ensure_provider(label)
-            # La cascade ne tourne que sur les providers qui ont une IP de sortie.
+            # The cascade only runs on providers that have an exit IP.
             self.breaker.set_active_providers(list(self._providers.keys()))
             self.breaker.config.providers = list(self._providers.keys())
             self._ctx_sig = _contexts_signature(contexts)
@@ -364,8 +364,8 @@ class CascadeManager:
         return len(self._providers)
 
     def _ensure_fresh(self):
-        """Recharge les contextes si le routage a change (compte ajoute, lane
-        rebrulee, identite tournee, compte mis en cooldown)."""
+        """Reloads contexts if routing has changed (account added, lane
+        reburned, identity turned, account put on cooldown)."""
         if not self.context_provider:
             return
         try:
@@ -376,7 +376,7 @@ class CascadeManager:
             self.refresh(contexts)
 
     async def _rotate_account(self, provider):
-        """Bascule sur un autre compte du meme provider (rate limit)."""
+        """Switch to another account with the same provider (rate limit)."""
         if not self.on_rotate:
             return None
         try:
@@ -388,12 +388,12 @@ class CascadeManager:
             return None
 
     def get_skipped(self):
-        """Comptes ecartees de la cascade (aucune IP de sortie, cooldown...)."""
+        """Accounts removed from the cascade (no exit IP, cooldown...)."""
         return list(self._skipped)
 
     async def execute_with_fallback(self, request):
         self._ensure_fresh()
-        # garantir que tous les providers actifs sont suivis
+        # ensure that all active providers are tracked
         for p in self._providers.values():
             self.breaker.ensure_provider(p.name)
 
@@ -413,27 +413,27 @@ class CascadeManager:
                         yield chunk
                     return
                 except PermissionError as e:
-                    # 401/403 remonte par les adaptateurs -> burn de la lane
-                    # du compte concerne (le burn porte l'account_id exact).
+                    # 401/403 goes up through the adapters -> lane burn
+                    # of the account concerned (the burn carries the exact account_id).
                     await self.breaker.burn_lane(account_id, "403 permission")
                     raise PermissionError403(str(e)) from e
                 except ResourceWarning as e:
-                    # 429 -> rate limit: on brule la lane et on bascule sur un
-                    # autre compte du meme provider s'il en reste un.
+                    # 429 -> rate limit: we burn the lane and switch to a
+                    # another account from the same provider if one remains.
                     await self.breaker.burn_lane(account_id, "429 rate_limit")
                     await self._rotate_account(candidate)
                     last_exc = RateLimitError(str(e), retry_after=60)
                     continue
-            raise last_exc or ProviderExecutionError(name + ": aucun compte utilisable")
+            raise last_exc or ProviderExecutionError(name + ": no usable account")
 
         try:
             async for chunk in self.breaker.execute_with_fallback(request, executor):
-                # synchroniser le score historique du provider avec l'etat reussi
+                # synchronize the historical score of the provider with the successful status
                 yield chunk
         except AllProvidersFailedError as e:
-            raise HTTPException(status_code=503, detail="Tous les endpoints frontier ont echoue. Dernier log: " + str(e))
+            raise HTTPException(status_code=503, detail="All border endpoints have failed. Last log: " + str(e))
 
     def get_stats(self):
-        """Statistiques par provider. La liste des comptes ecartees vit dans
-        get_skipped(): elle ne doit pas se melanger aux providers."""
+        """Statistics by provider. The list of rejected accounts lives in
+        get_skipped(): it must not mix with providers."""
         return self.breaker.get_global_stats()

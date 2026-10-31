@@ -1,25 +1,25 @@
 """
 Module: src/proxy/identity.py
-Role: Identite de navigateur PAR COMPTE — rotation d'IP + masquage de fingerprint.
+Role: Browser identity PER ACCOUNT — IP rotation + fingerprint masking.
 
-Probleme resolu: les services type Z.Code limitent une personne a 1 ou 2 comptes.
-Reponse: chaque compte recoit une identite de machine COMPLETE et DISTINCTE
-(IP de sortie + empreinte TLS + empreinte navigateur), et la conserve.
+Problem solved: Z.Code type services limit a person to 1 or 2 accounts.
+Answer: Each account is given a COMPLETE and DISTINCT machine identity
+(exit IP + TLS fingerprint + browser fingerprint), and keeps it.
 
 Deux invariants:
-  1. STABLE  — un compte garde la meme identite d'un bout a l'autre. Changer
-     d'identite en cours de session, c'est se faire bannir.
-  2. DISTINCTE — deux comptes ne partagent ni IP, ni empreinte. Un service qui
-     compte les comptes ne voit qu'une seule personne par identite.
+  1. STABLE — an account maintains the same identity throughout. To change
+     identity during the session is to be banned.
+  2. DISTINCT — two accounts do not share an IP or fingerprint. A service that
+     account accounts only see one person per identity.
 
-L'identite est DERIVEE d'un seed deterministe = hash(account_id + salt d'install
-+ compteur de rotation). Donc:
-  - reproductible: le meme seed redonne la meme identite (pas besoin de stocker
-    30 champs, on stocke le seed);
-  - unique par compte;
-  - rotable: un nouveau seed = une nouvelle identite coherente.
+The identity is DERIVED from a deterministic seed = hash(account_id + install salt
++ rotation counter). SO:
+  - reproducible: the same seed gives the same identity (no need to store
+    30 fields, we store the seed);
+  - unique per account;
+  - rotable: a new seed = a new coherent identity.
 
-Aucun secret ici: ce sont des caracteristiques de navigateur, pas des credentials.
+No secrets here: these are browser features, not credentials.
 """
 from __future__ import annotations
 
@@ -32,9 +32,9 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# ── Plaques de fingerprint : un profil TLS = une famille de navigateur ──────────
-# UA, sec-ch-ua, WebGL, ecran, memoire, coeurs doivent etre COHERENTS entre eux.
-# (Chrome 120 sur Windows avec un UA macOS = detection immediate.)
+# ── Fingerprint tags: one TLS profile = one browser family ──────────
+# UA, sec-ch-ua, WebGL, screen, memory, cores must be CONSISTENT with each other.
+# (Chrome 120 on Windows with a macOS UA = immediate detection.)
 
 LOCALES = {
     "en-US": ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles"],
@@ -118,7 +118,7 @@ def _hash_seed(*parts: str) -> int:
 
 @dataclass
 class IdentityProfile:
-    """Identite complete d'un compte. Derivee, jamais stockee en clair comme secret."""
+    """Complete identity of an account. Derivative, never stored in the clear as a secret."""
     identity_id: str
     account_id: str
     seed: int
@@ -149,10 +149,10 @@ class IdentityProfile:
 
     @property
     def fingerprint_hash(self) -> str:
-        """Empreinte complete (tout ce qui distingue une machine d'une autre).
-        Le UA seul ne suffit pas: beaucoup de vrais utilisateurs partagent la
-        meme version de Chrome. Ce qui compte: canvas, ecran, fuseau, WebGL,
-        memoire, coeurs + l'IP de sortie."""
+        """Complete footprint (everything that distinguishes one machine from another).
+        UA alone is not enough: many real users share the
+        same version of Chrome. What matters: canvas, screen, time zone, WebGL,
+        memory, cores + output IP."""
         raw = "|".join([
             self.user_agent, self.platform, self.locale, self.timezone,
             "{}x{}".format(self.screen_w, self.screen_h),
@@ -169,7 +169,7 @@ class IdentityProfile:
         return cls(**known)
 
     def headers(self) -> Dict[str, str]:
-        """Headers HTTP coherents avec l'empreinte (UA + langue + client hints)."""
+        """HTTP headers consistent with the fingerprint (UA + language + client hints)."""
         h = {
             "User-Agent": self.user_agent,
             "Accept-Language": self.locale + ",en;q=0.9",
@@ -181,7 +181,7 @@ class IdentityProfile:
         return h
 
     def context_kwargs(self) -> dict:
-        """Arguments pour Playwright/Camoufox new_context()."""
+        """Arguments for a Playwright browser context."""
         return {
             "viewport": {"width": self.viewport_w, "height": self.viewport_h},
             "screen": {"width": self.screen_w, "height": self.screen_h},
@@ -194,7 +194,7 @@ class IdentityProfile:
         }
 
     def summary(self) -> dict:
-        """Resume affichable (pas de secret dedans)."""
+        """Displayable summary (no secrets in it)."""
         return {
             "identity_id": self.identity_id,
             "fingerprint_hash": self.fingerprint_hash,
@@ -215,7 +215,7 @@ class IdentityProfile:
 
 def derive_profile(account_id: str, tls_profile: str = DEFAULT_TLS_PROFILE,
                    seed: Optional[int] = None, rotation: int = 0) -> IdentityProfile:
-    """Derive une identite coherente et reproductible pour un compte."""
+    """Derives a consistent and repeatable identity for an account."""
     tls_profile = tls_profile if tls_profile in BROWSER_TEMPLATES else DEFAULT_TLS_PROFILE
     tpl = BROWSER_TEMPLATES[tls_profile]
     if seed is None:
@@ -257,7 +257,7 @@ def derive_profile(account_id: str, tls_profile: str = DEFAULT_TLS_PROFILE,
 
 
 class IdentityManager:
-    """Gestionnaire d'identites par compte. Persiste dans data/identities.json."""
+    """Identity manager per account. Persists in data/identities.json."""
 
     def __init__(self, path: str = "data/identities.json"):
         self.path = Path(path)
@@ -299,7 +299,7 @@ class IdentityManager:
     # --- API ---
 
     def get(self, account_id: str, tls_profile: str = DEFAULT_TLS_PROFILE) -> IdentityProfile:
-        """Renvoie l'identite du compte, en la creant si besoin. STABLE."""
+        """Returns the identity of the account, creating it if necessary. STABLE."""
         prof = self.identities.get(account_id)
         if prof is None:
             prof = derive_profile(account_id, tls_profile, seed=_hash_seed(self.salt, account_id))
@@ -309,8 +309,8 @@ class IdentityManager:
 
     def rotate(self, account_id: str, reason: str = "manual",
                tls_profile: str = DEFAULT_TLS_PROFILE) -> IdentityProfile:
-        """Nouvelle identite pour le compte (nouveau seed). A appeler avec le burn
-        de lane: IP ET empreinte changent ensemble, jamais l'une sans l'autre."""
+        """New identity for the account (new seed). To call with the burn
+        de lane: IP AND fingerprint change together, never one without the other."""
         old = self.identities.get(account_id)
         rotation = (old.rotation + 1) if old else 1
         prof = derive_profile(
@@ -334,8 +334,8 @@ class IdentityManager:
         }
 
     def collisions(self) -> List[dict]:
-        """Comptes qui partagent la meme empreinte (a corriger: ils se font bannir
-        mutuellement). Repose sur l'identity_id, qui encode seed+compte."""
+        """Accounts that share the same fingerprint (to be corrected: they are banned
+        mutually). Based on the identity_id, which encodes seed+account."""
         seen: Dict[str, List[str]] = {}
         for acc, prof in self.identities.items():
             seen.setdefault(prof.identity_id, []).append(acc)
@@ -345,5 +345,5 @@ class IdentityManager:
         return len({p.user_agent for p in self.identities.values()})
 
     def distinct_fingerprint_count(self) -> int:
-        """Nombre d'empreintes navigateur reellement distinctes (pas seulement l'UA)."""
+        """Number of truly distinct browser fingerprints (not just UA)."""
         return len({p.fingerprint_hash for p in self.identities.values()})

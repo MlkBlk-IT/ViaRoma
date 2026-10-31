@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Scan de secrets sur TOUT le depot (et pas seulement sur ce qui part dans
-// le paquet). A faire tourner en CI: un credential committe doit casser la
-// build, pas etre decouvert un mois plus tard.
+// Scanning secrets on the WHOLE repository (and not just on what goes into
+// the package). To run in CI: a credential commit must break the
+// build, not be discovered a month later.
 //
-// Exclusions: .git, .venv, node_modules, data/ (etat local), __pycache__.
+// Exclusions: .git, .venv, node_modules, data/ (local state), __pycache__.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { dirname } from "node:path";
@@ -63,11 +63,11 @@ for (const file of walk(ROOT, [])) {
 }
 
 if (problems.length) {
-  eprint("[via-roma] SECRETS DETECTES dans le depot:");
+  eprint("[via-roma] SECRETS DETECTED in the repository:");
   for (const p of problems) eprint("  - " + p);
-  eprint("[via-roma] Si c'est un faux positif (exemple de documentation),");
-  eprint("             corrige la source plutot que de desactiver le scan.");
+  eprint("[via-roma] If it's a false positive (documentation example),");
+  eprint("             fixes the source rather than disabling scanning.");
   process.exit(1);
 }
 
-eprint("[via-roma] scan de secrets OK (" + scanned + " fichiers, " + SECRET_PATTERNS.length + " signatures)");
+eprint("[via-roma] secrets scan OK (" + scanned + " files, " + SECRET_PATTERNS.length + " signatures)");

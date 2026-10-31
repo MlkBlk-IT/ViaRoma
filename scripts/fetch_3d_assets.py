@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Telecharge les modeles 3D du Colisée (GLB) pour le dashboard ViaRoma.
+"""Download the 3D models of the Colosseum (GLB) for the ViaRoma dashboard.
 
-Sources (modeles 3D publies par Colosseum.how, usage libre y compris
-commercial, sous reserve de citer Colosseum.how avec un lien actif) :
+Sources (3D models published by Colosseum.how, free use including
+commercial, subject to citing Colosseum.how with an active link):
 
-  - colosseum-ad-80.glb  (~24 Mo)  Colosseo de l'an 80, avec velarium
-  - colosseum-today.glb  (~8 Mo)   etat actuel du Colosseo
+  - colosseum-ad-80.glb (~24 MB) Colosseo from the year 80, with velarium
+  - colosseum-today.glb (~8 MB) current state of Colosseo
 
-Voir CREDITS-TRIBUTIONS.txt pour l'attribution.
+See CREDITS-ATTRIBUTIONS.txt for allocation.
 
-Les fichiers sont ecrits dans ``data/models/`` et servis par l'application
-via la route ``/dashboard/static/models/{filename}``.
+Files are written to ``data/models/`` et servis par l'application
+via road ``/dashboard/static/models/{filename}``.
 
 Usage :
     python scripts/fetch_3d_assets.py [--force] [--only NAME]
 
-Le script est idempotent : un fichier deja present ET valide (magic glTF)
-n'est pas retelecharge.
+The script is idempotent: a file already present AND valid (magic glTF)
+is not re-downloaded.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import urllib.request
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS_DIR = os.path.join(REPO_ROOT, "data", "models")
 
-#: Magic bytes d'un conteneur glTF binaire (GLB) : 0x67 0x6C 0x54 0x46 = "glTF".
+#: Magic bytes of a binary glTF container (GLB): 0x67 0x6C 0x54 0x46 = "glTF".
 GLTF_MAGIC = b"glTF"
 
 USER_AGENT = (
@@ -65,7 +65,7 @@ def human_size(n: int) -> str:
 
 
 def check_glb(path: str) -> bool:
-    """Vrai si le fichier existe, est non vide et commence par la magic "glTF"."""
+    """True if the file exists, is non-empty and begins with the magic "glTF"."""
     if not os.path.isfile(path):
         return False
     if os.path.getsize(path) < 4:
@@ -78,7 +78,7 @@ def check_glb(path: str) -> bool:
 
 
 def download(url: str, dest: str) -> int:
-    """Telecharge `url` vers `dest` (ecriture atomique). Retourne la taille reelle."""
+    """Download `url` vers `dest` (atomic writing). Returns the actual size."""
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     tmp = dest + ".part"
     total = 0
@@ -99,7 +99,7 @@ def download(url: str, dest: str) -> int:
                     sys.stdout.flush()
         sys.stdout.write("\r" + " " * 70 + "\r")
         if total == 0:
-            raise RuntimeError("reponse vide")
+            raise RuntimeError("empty answer")
         os.replace(tmp, dest)
         return total
     except Exception:
@@ -116,17 +116,17 @@ def fetch(name: str, url: str, force: bool = False) -> bool:
     print(f"\n>> {name}")
     print(f"    source : {url}")
     if not force and check_glb(dest):
-        print(f"    deja present et valide -> {human_size(os.path.getsize(dest))} (ignore)")
+        print(f"    already present and valid -> {human_size(os.path.getsize(dest))} (ignore)")
         return True
     if force and os.path.exists(dest):
         print("    --force : retelechargement")
     try:
         size = download(url, dest)
     except urllib.error.HTTPError as exc:
-        print(f"    ECHEC HTTP {exc.code} {exc.reason}", file=sys.stderr)
+        print(f"    FAILED HTTP {exc.code} {exc.reason}", file=sys.stderr)
         return False
-    except Exception as exc:  # noqa: BLE001 - on veut un message clair
-        print(f"    ECHEC reseau : {exc}", file=sys.stderr)
+    except Exception as exc:  # noqa: BLE001 - we want a clear message
+        print(f"    FAILED network : {exc}", file=sys.stderr)
         return False
 
     if not check_glb(dest):
@@ -137,7 +137,7 @@ def fetch(name: str, url: str, force: bool = False) -> bool:
         except OSError:
             pass
         print(
-            "    ECHEC : magic glTF absente (attendu 67 6C 54 46, obtenu "
+            "    FAILURE: magic glTF absent (expected 67 6C 54 46, obtained "
             f"{head.hex(' ') or 'rien'})",
             file=sys.stderr,
         )
@@ -147,14 +147,14 @@ def fetch(name: str, url: str, force: bool = False) -> bool:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Telecharge les GLB du Colisee.")
-    parser.add_argument("--force", action="store_true", help="retelecharge meme si valide")
+    parser = argparse.ArgumentParser(description="Download the GLBs from the Coliseum.")
+    parser.add_argument("--force", action="store_true", help="redownload even if valid")
     parser.add_argument(
         "--only",
         action="append",
         default=None,
         metavar="NAME",
-        help="ne traite que cet asset (repeatable)",
+        help="only processes this asset (repeatable)",
     )
     args = parser.parse_args(argv)
 
@@ -183,9 +183,9 @@ def main(argv=None) -> int:
     print("=" * 66)
 
     if failed:
-        print(f"ECHEC pour : {', '.join(failed)}", file=sys.stderr)
+        print(f"FAILED for: {', '.join(failed)}", file=sys.stderr)
         return 1
-    print("Tous les modeles sont en place.")
+    print("All models are in place.")
     return 0
 
 

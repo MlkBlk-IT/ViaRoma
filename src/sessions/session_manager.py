@@ -1,17 +1,18 @@
 
 """
 Module: src/sessions/session_manager.py
-Role: Gestion multi-comptes, rotation de sessions, isolation des cookies.
-Resout: Rate limits par compte/IP -> basculement auto (Perso -> Ecole -> Travail).
-        Persistance cookies HttpOnly/Secure pour eviter re-auth WAF.
+Role: Multi-account management, session rotation, cookie isolation.
+Resout: Rate limits per account/IP -> basculement auto (Perso -> Ecole -> Travail).
+        Persistence of HttpOnly/Secure cookies to avoid WAF re-auth.
 Fusion: managers/session_manager.py (llm-spoofing-system) adapte a Roma:
-  - harvest via src.proxy.anti_waf_harvester.ChallengeBypasser (plus de utils.bypass_challenge)
-  - persistance JSON sur disque (cookie jar isole par compte)
+  - harvest via src.proxy.anti_waf_harvester.ChallengeBypasser (more than utils.bypass_challenge)
+  - persistance JSON sur disque (cookie jar isolated per account)
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import time
 from enum import Enum
@@ -20,6 +21,9 @@ from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 
 from src.proxy.anti_waf_harvester import ChallengeBypasser
+
+
+logger = logging.getLogger(__name__)
 
 
 class AccountType(Enum):
@@ -92,10 +96,10 @@ class Session:
 
 
 class SessionManager:
-    """Gere le pool de sessions multi-comptes.
-    - Rotation automatique sur rate limit / erreur / challenge
-    - Persistance disque (JSON) pour survie redemarrage
-    - Isolation stricte: cookies jamais partages entre comptes
+    """Manages the multi-account session pool.
+    - Automatic rotation on rate limit / error / challenge
+    - Disk persistence (JSON) for restart survival
+    - Strict isolation: cookies never shared between accounts
     """
 
     def __init__(self, config_path="config/accounts.yaml", sessions_dir="data/sessions", default_proxy=None,
@@ -103,23 +107,25 @@ class SessionManager:
         self.config_path = self._resolve_config(config_path)
         self.sessions_dir = Path(sessions_dir)
         self.default_proxy = default_proxy
-        self.egress_pool = egress_pool   # EgressLanePool: binding lane 1:1 par compte
-        self.identity_manager = identity_manager  # IdentityManager: empreinte par compte
+        self.egress_pool = egress_pool   # EgressLanePool: binding lane 1:1 per account
+        self.identity_manager = identity_manager  # IdentityManager: fingerprint per account
         self.accounts = {}
         self.sessions = {}
         self.account_sessions = {}
         self._lock = asyncio.Lock()
+        self.last_error = ""
+        self._interactive_browsers = {}
 
     def _resolve_config(self, config_path):
-        """Ou se trouve accounts.yaml ?
+        """Where is located accounts.yaml ?
 
-        1) tel quel (chemin absolu ou relatif au repertoire courant);
-        2) sinon VIAROMA_HOME (installation PyPI / npm);
-        3) sinon la racine du paquet (checkout source).
+        1) as is (absolute path or relative to the current directory);
+        2) otherwise VIAROMA_HOME (PyPI/npm installation);
+        3) otherwise the root of the package (checkout source).
 
-        Sans cela, le dashboard (qui lit config/ a la racine du paquet) et le
-        serveur (qui le lisait relativement au cwd) ne voyaient pas le meme
-        fichier des que le processus demarrait ailleurs que dans le depot.
+        Without this, the dashboard (which reads config/ at the root of the package) and the
+        server (which read it relative to the cwd) did not see the same
+        file as soon as the process starts somewhere other than in the repository.
         """
         path = Path(config_path)
         if path.is_absolute() or path.exists():
@@ -137,10 +143,10 @@ class SessionManager:
         return path
 
     async def load_accounts(self):
-        """Charge la config des comptes depuis YAML."""
+        """Load the account config from YAML."""
         import yaml
         if not self.config_path.exists():
-            raise FileNotFoundError("Config comptes introuvable: " + str(self.config_path))
+            raise FileNotFoundError("Accounts config not found: " + str(self.config_path))
         data = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))
         for acc_data in data.get("accounts", []):
             acc = AccountConfig(
@@ -158,7 +164,7 @@ class SessionManager:
             self.account_sessions.setdefault(acc.account_id, [])
 
     async def load_persisted_sessions(self):
-        """Restaure les sessions depuis le disque."""
+        """Restores sessions from disk."""
         if not self.sessions_dir.exists():
             return
         for session_file in self.sessions_dir.glob("*.json"):
@@ -177,12 +183,15 @@ class SessionManager:
         await self.load_accounts()
         await self.load_persisted_sessions()
 
-    async def get_session(self, provider, prefer_account_type=None):
-        """Retourne la meilleure session disponible pour un provider.
-        Ordre: priorite compte > type prefere > sante session.
+    async def get_session(self, provider, prefer_account_type=None, interactive=False, account_id=None,
+                          allow_direct=False):
+        """Returns the best session available for a provider.
+        Order: account priority > preferred type > health session.
         """
         async with self._lock:
             candidates = [acc for acc in self.accounts.values() if acc.provider == provider]
+            if account_id:
+                candidates = [acc for acc in candidates if acc.account_id == account_id]
             if not candidates:
                 return None
             candidates.sort(key=lambda a: -a.priority)
@@ -193,36 +202,96 @@ class SessionManager:
                     session = self.sessions.get(sid)
                     if session and session.is_healthy():
                         return session
-                new_session = await self._create_new_session(account)
+                new_session = await self._create_new_session(
+                    account, interactive=interactive, allow_direct=allow_direct)
                 if new_session:
                     return new_session
             return None
 
-    async def _create_new_session(self, account):
-        """Cree une nouvelle session via ChallengeBypasser (login + harvest cookies).
-        La lane egress du compte (si pool present) est utilisee comme proxy de sortie.
-        Le navigateur porte l'identite du compte (UA, locale, fuseau, ecran): c'est
-        ce qui fait qu'un compte ressemble a UNE machine et pas a plusieurs.
+    async def _create_new_session(self, account, interactive=False, allow_direct=False):
+        """Create a new session via ChallengeBypasser (login + harvest cookies).
+        The egress lane of the account (if pool present) is used as an output proxy.
+        The browser carries the identity of the account (UA, locale, timezone, screen):
+        this makes each account look like ONE distinct machine, not several accounts
+        sharing one fingerprint.
+
+        interactive=True: browser visible, user logs in manually, no credentials needed.
+        interactive=False: headless auto-fill using stored credentials.
+
+        FAIL-CLOSED: if no proxy is configured (no egress lane + no default_proxy),
+        the browser is NOT opened — the real IP must NEVER be exposed.
         """
-        credentials = await self._resolve_credentials(account.credentials_ref)
-        if not credentials:
-            return None
         proxy = self._lane_proxy(account.account_id)
+        if not proxy and not allow_direct:
+            self.last_error = (
+                "Connexion bloquee : aucun proxy de sortie valide. "
+                "Ajoutez un proxy HTTP/SOCKS5 ou demarrez Tor (127.0.0.1:9050). "
+                "L'IP reelle ne sera jamais utilisee."
+            )
+            logger.error("create_session_blocked_no_proxy account_id=%s", account.account_id)
+            return None
+
+        if not proxy and allow_direct:
+            self.last_error = ""
+
+        # A lane can exist on disk while its proxy is dead. Probe it before
+        # opening Chrome; otherwise the browser could connect directly after a
+        # proxy failure, which violates the fail-closed guarantee.
+        if self.egress_pool is not None:
+            lane = self.egress_pool.get_lane(account.account_id)
+            if lane is not None and not lane.proxy.public_ip:
+                if not await self.egress_pool.probe_endpoint(lane.proxy):
+                    self.last_error = (
+                        "Proxy de sortie indisponible : %s. "
+                        "Aucun navigateur n'a ete ouvert pour proteger l'IP reelle."
+                    ) % lane.proxy.url
+                    return None
+        credentials = None
+        if not interactive:
+            credentials = await self._resolve_credentials(account.credentials_ref)
+            if not credentials:
+                self.last_error = (
+                    "Credentials absentes ou invalides pour %s. "
+                    "Utilisez la connexion interactive du dashboard."
+                ) % account.account_id
+                return None
         identity = None
         if self.identity_manager is not None:
             lane = self.egress_pool.get_lane(account.account_id) if self.egress_pool else None
             identity = self.identity_manager.get(
                 account.account_id, lane.tls_profile if lane else "chrome120")
-        bypasser = ChallengeBypasser(proxy=proxy, identity=identity)
+        profile_root = self.sessions_dir.parent / "browser-profiles" / account.account_id
+        bypasser = self._interactive_browsers.pop(account.account_id, None) if interactive else None
+        if bypasser is None:
+            bypasser = ChallengeBypasser(
+                proxy=proxy,
+                identity=identity,
+                headless=not interactive,
+                user_data_dir=str(profile_root),
+            )
         try:
             result = await bypasser.harvest_session(
                 login_url=account.login_url,
-                success_selector=account.success_selector,
+                success_selector=account.success_selector or "",
                 credentials=credentials,
+                interactive=interactive,
             )
         finally:
-            await bypasser.close()
+            # Interactive failures keep Chrome open so Cloudflare/2FA can be
+            # completed and retried. Successful sessions and headless runs are
+            # closed normally.
+            if not interactive or ("result" in locals() and result.success):
+                await bypasser.close()
+            elif "result" in locals() and not result.success:
+                self._interactive_browsers[account.account_id] = bypasser
         if not result.success:
+            self.last_error = result.error or "La page de connexion n'a pas ete validee."
+            return None
+        if not result.cookies:
+            self.last_error = (
+                "Connexion non confirmee : aucun cookie n'a ete capture. "
+                "Le navigateur a ete ferme et aucune session n'a ete stockee."
+            )
             return None
         session = Session(
             session_id=account.account_id + "_" + str(int(time.time())),
@@ -234,23 +303,28 @@ class SessionManager:
         self.sessions[session.session_id] = session
         self.account_sessions.setdefault(account.account_id, []).append(session.session_id)
         await self._persist_session(session)
+        self.last_error = ""
         return session
 
     def _lane_proxy(self, account_id):
-        """Retourne l'URL de proxy de la lane du compte, ou le proxy par defaut.
-        Cree la lane si absente (binding persistant 1:1)."""
+        """Returns the account lane proxy URL, or the default proxy.
+        Creates the lane if absent (1:1 persistent binding)."""
         if self.egress_pool is None:
             return self.default_proxy
-        lane = self.egress_pool.bind(account_id)
+        lane = self.egress_pool.bind(
+            account_id,
+            require_browser=True,
+            provider=self.accounts.get(account_id).provider if account_id in self.accounts else None,
+        )
         if lane is None:
             return self.default_proxy
         return lane.proxy.url
 
     async def burn_lane(self, account_id, reason="403/429"):
-        """Brule la lane egress du compte sur 403/429 (cookies de session intacts).
+        """Burn lane egress of account on 403/429 (session cookies intact).
 
-        L'identite de navigateur tourne AVEC l'IP: changer d'IP en gardant la
-        meme empreinte, c'est un compte qui "saute de machine" -> detection.
+        Browser identity runs WITH IP: change IP while keeping the
+        same fingerprint, it's an account that "jumps machine" -> detection.
         """
         if self.egress_pool is None:
             return None
@@ -262,8 +336,8 @@ class SessionManager:
         return result
 
     def get_user_agents(self):
-        """{account_id: user_agent} des comptes ayant une session recoltee.
-        Sert a aligner l'empreinte HTTP (curl_cffi) sur celle du navigateur."""
+        """{account_id: user_agent} accounts with a harvested session.
+        Used to align the HTTP fingerprint (curl_cffi) with that of the browser."""
         out = {}
         for s in self.sessions.values():
             if s.user_agent:
@@ -271,7 +345,7 @@ class SessionManager:
         return out
 
     def _session_for(self, account_id):
-        """Session la plus recente d'un compte (cookies + UA recoltes)."""
+        """Most recent session of an account (cookies + UA harvests)."""
         best = None
         for s in self.sessions.values():
             if s.account_id != account_id:
@@ -281,14 +355,14 @@ class SessionManager:
         return best
 
     def get_provider_contexts(self) -> List[Dict[str, Any]]:
-        """Contexte de routage par compte: tout ce qui identifie la requete.
+        """Routing context by account: everything that identifies the request.
 
-        Les 4 elements viennent du MEME compte, sinon il "change de machine":
-          - IP de sortie : lane egress du compte. Absente -> proxy="" -> le
-            provider est ECARTE (fail-closed, l'IP reelle ne sort jamais).
-          - profil TLS   : profil de l'identite du compte (meme famille que le
-            navigateur qui a recolte la session).
-          - User-Agent   : UA recolte par le navigateur, sinon celui de l'identite.
+        The 4 elements come from the SAME account, otherwise it "changes machine":
+          - Exit IP: lane egress of the account. Absent -> proxy="" -> the
+            provider is DISCOUNTED (fail-closed, the real IP never comes out).
+          - TLS profile: account identity profile (same family as the
+            browser that harvested the session).
+          - User-Agent: UA collected by the browser, otherwise that of the identity.
           - cookies      : jar recolte + credentials resolus.
         """
         out: List[Dict[str, Any]] = []
@@ -333,10 +407,10 @@ class SessionManager:
         return out
 
     async def rotate_to_next_account(self, account_id):
-        """Bascule sur un autre compte du meme provider (rate limit / 429).
+        """Switch to another account with the same provider (rate limit / 429).
 
-        La session du compte surcharge est mise en cooldown, puis le prochain
-        compte du provider est choisi. Retourne l'account_id cible ou None.
+        The session of the overloaded account is put into cooldown, then the next
+        provider account is chosen. Returns the target account_id or None.
         """
         acc = self.accounts.get(account_id)
         if acc is None:
@@ -354,14 +428,14 @@ class SessionManager:
         return siblings[0].account_id
 
     async def _resolve_credentials(self, ref):
-        """Resout une reference de credentials. Format: env:VAR | file:path"""
+        """Resolves a credentials reference. Format: env:VAR | file:path"""
         return self.resolve_credentials(ref)
 
     def resolve_credentials(self, ref) -> Dict[str, str]:
-        """Version synchrone de la resolution (lecture env / fichier).
+        """Synchronous version of the resolution (read env/file).
 
-        Le secret ne quitte jamais la machine: il est lu ici et place dans le
-        contexte de routage, jamais journalise ni renvoye par l'API.
+        The secret never leaves the machine: it is read here and placed in the
+        routing context, never logged or returned by the API.
         """
         if not ref:
             return {}

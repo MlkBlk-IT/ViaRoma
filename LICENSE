@@ -1,67 +1,67 @@
 ViaRoma — All Rights Reserved
 ============================
 
-Copyright (c) 2026 MlkBlk-IT. Tous droits réservés.
+Copyright (c) 2026 MlkBlk-IT. All rights reserved.
 
-Ce logiciel n'est **PAS** distribué sous licence libre. L'auteur se réserve
-l'intégralité des droits sur le code source, la documentation, la conception et
-les éléments visuels (dashboard « Roma Aeterna », moteur du Colisée, animations).
+This software is **NOT** distributed under a free license. The author reserves
+full rights to the source code, documentation, design and
+visual elements (“Roma Aeterna” dashboard, Colosseum engine, animations).
 
-Aucune licence n'est accordée par défaut. L'absence de licence open source
-signifie : usage réservé au titulaire des droits.
-
--------------------------------------------------------------------------------
-1. Ce qui est permis
--------------------------------------------------------------------------------
-
-* Lire, exécuter et faire tourner le logiciel **sur votre propre machine**,
-  pour votre usage personnel ou vos travaux de recherche.
+No license is granted by default. The absence of an open source license
+means: use reserved for the rights holder.
 
 -------------------------------------------------------------------------------
-2. Ce qui est interdit, sans accord écrit préalable
+1. What is permitted
 -------------------------------------------------------------------------------
 
-* **Redistribuer** le code, en tout ou partie, sous quelque forme que ce soit
+* Read, run and run the software **on your own machine**,
+  for your personal use or research work.
+
+-------------------------------------------------------------------------------
+2. What is prohibited without prior written consent
+-------------------------------------------------------------------------------
+
+* **Redistribute** the code, in whole or in part, in any form
   (fork, copie, archive, mirror, paquet npm / PyPI, binaire, capture
-  d'écran de code, transcription).
-* **Publier** le code ou une version dérivée sur un dépôt, un registre, un
-  service ou un modèle commercial.
-* **Modifier** le logiciel pour en produire une œuvre dérivée destinée à être
-  partagée, distribuée ou exploitée commercialement.
-* **Vendre, louer, prêter ou sous-licenser** le logiciel, ou en tirer un
-  produit ou un service payant.
-* **Supprimer ou masquer** les mentions de copyright, d'auteur ou de licence.
-* L'utiliser pour **contourner frauduleusement** une protection, un service
-  tiers, ou pour commettre un acte illicite. Le logiciel a une vocation de
-  recherche sur les mécaniques d'identité de session ; l'emploi en abuse
-  relève de votre responsabilité et peut engager votre responsabilité
-  pénale comme civile.
+  screen code, transcription).
+* **Publish** the code or a derived version to a repository, registry,
+  service or business model.
+* **Modify** the software to produce a derivative work intended to be
+  shared, distributed or commercially exploited.
+* **Sell, rent, loan or sublicense** the software, or make use of it
+  paid product or service.
+* **Remove or obscure** copyright, author or license notices.
+* Use it to **fraudulently circumvent** protection or a service
+  third party, or to commit an illegal act. The software has a vocation to
+  research on session identity mechanics; the use of it is abused
+  is your responsibility and may incur your liability
+  criminal as well as civil.
 
 -------------------------------------------------------------------------------
-3. Clause de sécurité
+3. Security clause
 -------------------------------------------------------------------------------
 
-Vu la nature du projet (identité de session, empreinte TLS, pool d'IP
-jetables), l'auteur se réserve le droit de **retirer le code ou d'en révoquer
-l'accès** à tout moment, notamment en cas de fuite de credentials, de
-publication de secrets, ou d'usage détourné. Aucune autorisation de
-distribution n'est concédée par la simple mise à disposition publique du
-dépôt.
+Given the nature of the project (session identity, TLS footprint, IP pool
+disposable), the author reserves the right to **withdraw the code or to revoke it
+access** at any time, particularly in the event of a leak of credentials,
+publication of secrets, or misuse. No authorization to
+distribution is not granted by the simple making publicly available of the
+deposit.
 
 -------------------------------------------------------------------------------
-4. Absence de garantie
+4. No guarantee
 -------------------------------------------------------------------------------
 
-Le logiciel est fourni « en l'état », sans garantie d'aucune sorte, expresse
-ou implicite, y compris demerchantabilité, d'aptitude à un usage particulier
-ou de non-violation. En aucun cas l'auteur ne sera responsable dedommages
-immatériels directs, indirects ou consécutifs liés à l'usage du logiciel, y
-compris la perte de comptes, de quotas, de revenus ou de données.
+The software is provided "as is", without warranty of any kind, express
+or implied, including merchantability, fitness for a particular purpose
+or non-violation. Under no circumstances will the author be responsible for any damages
+direct, indirect or consequential intangible assets linked to the use of the software, including
+including loss of accounts, quotas, revenue or data.
 
 -------------------------------------------------------------------------------
 5. Contact
 
-Toute demande de licence, d'autorisation de redistribution ou de partnership
-est à adresser via les issues du dépôt GitHub.
+Any request for license, redistribution authorization or partnership
+must be sent via the GitHub repository.
 
-(c) 2026 MlkBlk-IT — Tous droits réservés.
+(c) 2026 MlkBlk-IT — All rights reserved.

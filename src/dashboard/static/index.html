@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ViaRoma — Free Frontier Router</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23fbf7ee'/><path d='M5 23c0-6.6 4.9-11 11-11s11 4.4 11 11' stroke='%23c69b4a' stroke-width='2.6' fill='none'/><path d='M9 23v-4.5M14 23v-6M18 23v-6M23 23v-4.5' stroke='%236b2737' stroke-width='2' stroke-linecap='round'/><path d='M4 23.5h24' stroke='%238f6a26' stroke-width='2.2' stroke-linecap='round'/></svg>">
-<link rel="stylesheet" href="/dashboard/static/style.css?v=12">
+<link rel="stylesheet" href="/dashboard/static/style.css?v=16">
 </head>
 <body>
-<!-- ═══ INTRO: rue romaine -> Colisee ═══ -->
+<!-- ═══ INTRO: Roman street -> Colosseum ═══ -->
 <div id="roma-intro" class="intro-overlay">
   <canvas></canvas>
-  <button class="intro-skip" data-intro-skip>Passer l'intro ⏭</button>
+  <button class="intro-skip" data-intro-skip>Skip intro ⏭</button>
 </div>
 
 <div class="bg-columns"></div>
@@ -20,7 +20,7 @@
 <!-- ═══ HEADER ═══ -->
 <header class="topbar glass">
   <div class="brand">
-    <img class="aquila" src="/dashboard/static/aquila.svg?v=12" alt="Aquila — aigle legionnaire de ViaRoma" />
+    <img class="aquila" src="/dashboard/static/aquila.svg?v=16" alt="Aquila — Roman eagle of ViaRoma" />
     <canvas class="colosseum" id="colosseum-3d"></canvas>
     <div class="brand-text">
       <h1>VIAROMA</h1>
@@ -43,53 +43,41 @@
     <div class="panel-header"><span>🧭 Roma Control</span></div>
 
     <div class="nav-group">
-      <div class="panel-header">Pilotage</div>
+      <div class="panel-header">Quick Start</div>
       <nav class="nav-vertical" id="nav-tabs">
-        <button class="nav-tab active" data-tab="overview"><span class="ico">📊</span>Overview</button>
+        <button class="nav-tab active" data-tab="providers"><span class="ico">🔌</span>Providers</button>
+        <button class="nav-tab" data-tab="credentials"><span class="ico">🔐</span>Credentials</button>
+      </nav>
+    </div>
+
+    <div class="nav-group">
+      <div class="panel-header">Monitor</div>
+      <nav class="nav-vertical">
+        <button class="nav-tab" data-tab="overview"><span class="ico">📊</span>Overview</button>
+        <button class="nav-tab" data-tab="live"><span class="ico">🔴</span>Live</button>
+        <button class="nav-tab" data-tab="metrics"><span class="ico">📈</span>Metrics</button>
+        <button class="nav-tab" data-tab="log"><span class="ico">📜</span>Journal</button>
+      </nav>
+    </div>
+
+    <div class="nav-group">
+      <div class="panel-header">Advanced</div>
+      <nav class="nav-vertical">
         <button class="nav-tab" data-tab="cascade"><span class="ico">⚡</span>Cascade</button>
         <button class="nav-tab" data-tab="egress"><span class="ico">🛣️</span>Egress</button>
-        <button class="nav-tab" data-tab="providers"><span class="ico">🔌</span>Providers</button>
-        <button class="nav-tab" data-tab="credentials"><span class="ico">🔐</span>Credentials</button>
         <button class="nav-tab" data-tab="identities"><span class="ico">🧬</span>Identities</button>
-      </nav>
-    </div>
-
-    <div class="nav-group">
-      <div class="panel-header">Observabilité</div>
-      <nav class="nav-vertical">
-        <button class="nav-tab" data-tab="live"><span class="ico">🔴</span>Live</button>
-        <button class="nav-tab" data-tab="hunter"><span class="ico">🔍</span>Free Hunter</button>
         <button class="nav-tab" data-tab="sessions"><span class="ico">📱</span>Sessions</button>
-        <button class="nav-tab" data-tab="security"><span class="ico">🛡️</span>Sécurité</button>
-        <button class="nav-tab" data-tab="metrics"><span class="ico">📈</span>Métriques</button>
-        <button class="nav-tab" data-tab="journal"><span class="ico">📜</span>Journal</button>
-      </nav>
-    </div>
-
-    <div class="nav-group">
-      <div class="panel-header">Architecture</div>
-      <nav class="nav-vertical">
-        <button class="nav-tab" data-tab="architecture"><span class="ico">🏛️</span>Graphe</button>
-      </nav>
-    </div>
-
-    <div class="nav-group">
-      <div class="panel-header">Playground</div>
-      <nav class="nav-vertical">
+        <button class="nav-tab" data-tab="security"><span class="ico">🛡️</span>Security</button>
+        <button class="nav-tab" data-tab="hunter"><span class="ico">🔍</span>Free Hunter</button>
+        <button class="nav-tab" data-tab="architecture"><span class="ico">🏛️</span>Graph</button>
         <button class="nav-tab" data-tab="playground"><span class="ico">⚔️</span>Console</button>
-        <button class="nav-tab" data-tab="models"><span class="ico">🗂️</span>Modèles libres</button>
+        <button class="nav-tab" data-tab="models"><span class="ico">🗂️</span>Templates</button>
         <button class="nav-tab" data-tab="antiwaf"><span class="ico">🛡️</span>Anti-WAF</button>
-      </nav>
-    </div>
-
-    <div class="nav-group">
-      <div class="panel-header">Configuration</div>
-      <nav class="nav-vertical">
         <button class="nav-tab" data-tab="config"><span class="ico">⚙️</span>Config</button>
       </nav>
     </div>
 
-    <div class="panel-header" style="margin-top:auto"><span>⚡ Opérations</span></div>
+    <div class="panel-header" style="margin-top:auto"><span>⚡ Operations</span></div>
     <div class="quick-actions">
       <button class="btn sm" data-action="hunter-scan">🔍 Scan Now</button>
       <button class="btn sm" data-action="rotate-session">📱 Rotate Session</button>
@@ -128,12 +116,12 @@
   <span id="foot-ts">—</span>
 </footer>
 
-<script src="/dashboard/static/intro.js?v=12"></script>
-<script src="/dashboard/static/colosseum.js?v=12"></script>
-<script src="/dashboard/static/egress-animation.js?v=12"></script>
-<script src="/dashboard/static/drawer.js?v=12"></script>
-<script src="/dashboard/static/architecture.js?v=12"></script>
-<script src="/dashboard/static/charts.js?v=12"></script>
-<script src="/dashboard/static/app.js?v=12"></script>
+<script src="/dashboard/static/intro.js?v=16"></script>
+<script src="/dashboard/static/colosseum.js?v=16"></script>
+<script src="/dashboard/static/egress-animation.js?v=16"></script>
+<script src="/dashboard/static/drawer.js?v=16"></script>
+<script src="/dashboard/static/architecture.js?v=16"></script>
+<script src="/dashboard/static/charts.js?v=16"></script>
+<script src="/dashboard/static/app.js?v=16"></script>
 </body>
 </html>

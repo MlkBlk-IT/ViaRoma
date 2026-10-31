@@ -1,8 +1,8 @@
 """
 Module: src/dashboard/routes.py
-Role: Router FastAPI du dashboard ViaRoma.
-Expose les stats des composants Roma + actions (burn lane, rotate session) + edition de config.
-Aucune suppression destructive: burn = quarantine.
+Role: FastAPI Router of the ViaRoma dashboard.
+Shows the stats of Roma components + actions (burn lane, rotate session) + config editing.
+No destructive deletion: burn = quarantine.
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ async def _body(request: Request) -> Dict[str, Any]:
 
 
 def _components(request: Request) -> Dict[str, Any]:
-    # Composants injectes dans app.state par src/main.py au startup.
+    # Components injected into app.state by src/main.py at the startup.
     state = request.app.state
     return {
         "egress_pool": getattr(state, "egress_pool", None),
@@ -55,7 +55,7 @@ def _scrub(d: Dict[str, Any]) -> Dict[str, Any]:
 
 def _safe_stats(obj: Any) -> Dict[str, Any]:
     if obj is None:
-        return {"available": False, "reason": "composant non charge"}
+        return {"available": False, "reason": "unloaded component"}
     fn = getattr(obj, "get_stats", None)
     if fn is None:
         return {"available": False, "reason": "get_stats absent"}
@@ -113,7 +113,7 @@ async def burn_lane(request: Request, payload: Dict[str, Any] = Body(default={})
     account_id = str(payload.get("account_id") or payload.get("lane") or "")
     reason = str(payload.get("reason") or "manual_burn_from_dashboard")
     if not account_id:
-        raise HTTPException(status_code=400, detail="account_id requis")
+        raise HTTPException(status_code=400, detail="account_id required")
     if sessions is None:
         return {"ok": False, "error": "SessionManager indisponible"}
     fn = getattr(sessions, "burn_lane", None)
@@ -144,15 +144,15 @@ async def rotate_egress(request: Request, payload: Dict[str, Any] = Body(default
         except Exception as e:
             return {"ok": False, "error": str(e), "via": meth}
         return {"ok": True, "via": meth, "result": str(res)[:400]}
-    return {"ok": False, "error": "aucune methode de rotation exposee par le pool"}
+    return {"ok": False, "error": "no rotation method exposed by the pool"}
 
 
 @router.post("/egress/assign")
 async def egress_assign(request: Request, payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
-    """Attribue explicitement un proxy du pool a un compte.
+    """Explicitly assigns a pool proxy to an account.
 
-    Sans cet endpoint, on ne peut pas CHOISIR l'IP de sortie d'un compte:
-    `rebind()` tire au sort dans le pool disponible.
+    Without this endpoint, you cannot CHOOSE the exit IP of an account:
+    `rebind()` draws lots from the available pool.
     """
     pool = _components(request)["egress_pool"]
     if pool is None:
@@ -160,10 +160,14 @@ async def egress_assign(request: Request, payload: Dict[str, Any] = Body(default
     account_id = str(payload.get("account_id") or "")
     url = str(payload.get("url") or "")
     if not account_id or not url:
-        raise HTTPException(status_code=400, detail="account_id et url requis")
+        raise HTTPException(status_code=400, detail="account_id and url required")
     ep = next((e for e in pool.pool if e.url == url), None)
     if ep is None:
-        return {"ok": False, "error": "proxy absent du pool"}
+        return {"ok": False, "error": "proxy missing from pool"}
+    sessions = _components(request).get("sessions")
+    account = sessions.accounts.get(account_id) if sessions else None
+    if not ep.is_browser_ready(account.provider if account else None):
+        return {"ok": False, "error": "Proxy non verifie, mort, marque ou deja brule."}
     from src.proxy.egress_lanes import Lane, LaneState
     old = pool.lanes.get(account_id)
     tls = getattr(old, "tls_profile", "chrome120") if old is not None else "chrome120"
@@ -216,7 +220,7 @@ async def rotate_session(request: Request, payload: Dict[str, Any] = Body(defaul
         except Exception as e:
             return {"ok": False, "error": str(e), "via": meth}
         return {"ok": True, "via": meth, "account_id": account_id, "result": str(res)[:400]}
-    return {"ok": False, "error": "aucune methode de rotation exposee"}
+    return {"ok": False, "error": "no rotation method exposed"}
 
 
 @router.get("/cascade/stats")
@@ -252,7 +256,7 @@ async def get_config() -> Dict[str, Any]:
 async def put_config(filename: str, payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
     content = payload.get("content")
     if not isinstance(content, str):
-        raise HTTPException(status_code=400, detail="champ content (string) requis")
+        raise HTTPException(status_code=400, detail="required content (string) field")
     try:
         report = config_io.write_config(filename, content)
     except ValueError as e:
@@ -288,11 +292,11 @@ async def overview(request: Request) -> Dict[str, Any]:
 
 @router.get("/hunter/detail")
 async def hunter_detail(request: Request) -> Dict[str, Any]:
-    """Catalogue du Hunter, filtrable et paginé côté serveur.
+    """Hunter catalog, filterable and paginated on the server side.
 
-    Le catalogue fait ~2000 entrées. Sans filtre, on renvoyait les 100 modeles
-    les plus recemment decouverts: les 259 frontier etaient dilues dedans et
-    le filtre "frontier" ne remontait rien. Ici le tri place le frontier en
+    The catalog has ~2000 entries. Without filter, we returned the 100 models
+    the most recently discovered: the 259 frontier were diluted in it and
+    the “border” filter did not return anything. Here the sorting places the border in
     tete, et `tier` / `q` filtrent reellement.
     """
     hunter = _components(request)["hunter"]
@@ -320,7 +324,7 @@ async def hunter_detail(request: Request) -> Dict[str, Any]:
                    if q in str(m.get("model_id", "")).lower()
                    or q in str(m.get("provider", "")).lower()]
 
-    # frontier d'abord, puis les plus recemment verifies
+    # border first, then the most recently verified
     order = {"frontier": 0, "large": 1, "medium": 2, "small": 3}
     catalog.sort(key=lambda m: (order.get(str(m.get("tier", "")).lower(), 9),
                                  -float(m.get("last_verified") or 0)))
@@ -342,17 +346,17 @@ async def hunter_detail(request: Request) -> Dict[str, Any]:
 
 @router.get("/hunter/live")
 async def hunter_live(request: Request) -> Dict[str, Any]:
-    """Sorties live: news, modeles recemment publies, modeles GGUF.
+    """Live releases: news, recently released models, GGUF models.
 
-    Tout est scrape en direct: flux RSS/JSON des labs et de la communaute,
-    modeles HuggingFace crees recemment, et depots GGUF avec leurs VRAIS
-    fichiers de quantification (nom + taille en octets + URL).
+    Everything is scraped live: RSS/JSON feeds from labs and the community,
+    recently created HuggingFace models, and GGUF repositories with their REAL
+    quantization files (name + size in bytes + URL).
     """
     hunter = _components(request)["hunter"]
     if hunter is None:
         return {"available": False}
-    # Rafraichit le flux live a la demande (le scan de fond tourne toutes
-    # les 5 min, mais l'onglet Live doit etre immediat).
+    # Refreshes the live stream on demand (the background scan runs every
+    # the 5 min, but the Live tab must be immediate).
     try:
         await hunter.scan_news()
     except Exception:
@@ -384,7 +388,7 @@ async def hunter_live(request: Request) -> Dict[str, Any]:
 
 @router.get("/cascade/detail")
 async def cascade_detail(request: Request) -> Dict[str, Any]:
-    """Circuit breaker détaillé: état par provider, chaîne de fallback."""
+    """Detailed circuit breaker: status by provider, fallback chain."""
     cascade = _components(request)["cascade"]
     if cascade is None:
         return {"available": False}
@@ -418,7 +422,7 @@ async def cascade_detail(request: Request) -> Dict[str, Any]:
 
 @router.get("/sessions/detail")
 async def sessions_detail(request: Request) -> Dict[str, Any]:
-    """Sessions détaillées: liste complète avec état, cookies, health."""
+    """Detailed sessions: complete list with status, cookies, health."""
     sessions = _components(request)["sessions"]
     if sessions is None:
         return {"available": False}
@@ -449,7 +453,7 @@ async def sessions_detail(request: Request) -> Dict[str, Any]:
 
 @router.get("/egress/detail")
 async def egress_detail(request: Request) -> Dict[str, Any]:
-    """Egress lanes détaillées: pool, lanes avec IP/pays/latence/état."""
+    """Detailed Egress lanes: pool, lanes with IP/country/latency/state."""
     pool = _components(request)["egress_pool"]
     if pool is None:
         return {"available": False}
@@ -480,22 +484,29 @@ async def egress_detail(request: Request) -> Dict[str, Any]:
             "country": ep.country,
             "latency_ms": round(ep.latency_ms, 1),
             "is_usable": ep.is_usable,
+            "browser_ready": ep.is_browser_ready(),
+            "compatible": [p for p in ("claude_web", "gemini_web", "chatgpt_web")
+                           if ep.flag_checks.get(p) == "ok"],
             "flag_status": getattr(ep, "flag_status", "unknown"),
             "flag_checks": getattr(ep, "flag_checks", {}),
             "public_ip": ep.public_ip,
+            "burns": ep.burns,
+            "last_probe": ep.last_probe,
         })
+    ready_pool = [p for p in pool_list if p.get("browser_ready")]
     return {
         "available": True,
         "stats": stats,
         "lanes": lanes,
         "pool": pool_list[:200],
+        "ready_pool": ready_pool[:100],
         "total_pool": len(pool_list),
     }
 
 
 @router.get("/providers/detail")
 async def providers_detail(request: Request) -> Dict[str, Any]:
-    """Providers web: identite de routage par compte (IP, TLS, UA). Aucun secret."""
+    """Web providers: routing identity by account (IP, TLS, UA). No secrets."""
     from src.providers.providers import build_providers, get_active_providers
     comps = _components(request)
     sessions = comps.get("sessions")
@@ -515,24 +526,99 @@ async def providers_detail(request: Request) -> Dict[str, Any]:
 
 @router.post("/providers/connect")
 async def providers_connect(request: Request) -> Dict[str, Any]:
-    """Connecter un provider par nom (cle technique ou label)."""
+    """One-click provider connection: opens a visible browser, user logs in
+    manually, cookies are harvested automatically. No technical setup required.
+    Auto-creates an account if none exists for the provider.
+    """
     body = await _body(request)
     name = str(body.get("provider", "") or "")
-    from src.providers.providers import WEB_CHAT_REGISTRY
-    found = None
-    for p in WEB_CHAT_REGISTRY:
-        if str(p.get("name", "")).lower() == name.lower() or p.get("provider_key") == name:
-            found = p
-            break
-    if not found:
+    requested_account_id = str(body.get("account_id", "") or "").strip()
+    connection_mode = str(body.get("mode", "egress") or "egress").strip().lower()
+    if connection_mode not in {"egress", "direct"}:
+        raise HTTPException(400, "Unknown connection mode")
+    if requested_account_id and not __import__("re").fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", requested_account_id):
+        raise HTTPException(400, "Invalid account_id. Use letters, numbers, dot, dash or underscore.")
+
+    from src.proxy.proxy_engine import PROVIDER_META
+    # Resolve provider key from name (label or key)
+    key = name
+    if name not in PROVIDER_META:
+        for k, meta in PROVIDER_META.items():
+            if str(meta.get("label", "")).lower() == name.lower():
+                key = k
+                break
+    if key not in PROVIDER_META:
         raise HTTPException(404, f"Provider '{name}' not found")
+
+    login_url = PROVIDER_META[key].get("login_url", "")
+
+    sessions = _components(request).get("sessions")
+    if sessions is None:
+        return {"ok": False, "error": "SessionManager unavailable"}
+
+    # Check if an account exists for this provider
+    accounts = [a for a in sessions.accounts.values() if a.provider == key]
+
+    if not accounts or requested_account_id:
+        # Auto-create an account for the 1-click interactive flow. Credentials
+        # are not required: the user authenticates in the visible browser.
+        from src.dashboard.config_io import config_path, backup, strip_inline_credentials
+        import yaml as _y
+        p = config_path("accounts.yaml")
+        backup("accounts.yaml")
+        if p.exists():
+            data = _y.safe_load(p.read_text(encoding="utf-8")) or {}
+        else:
+            data = {"accounts": []}
+        if not data.get("accounts"):
+            data["accounts"] = []
+        account_id = requested_account_id or f"{key}_auto"
+        # Skip if already exists (race guard)
+        existing = next((a for a in data["accounts"] if a.get("account_id") == account_id), None)
+        if existing is not None and existing.get("provider") != key:
+            raise HTTPException(409, f"Account '{account_id}' already belongs to another provider")
+        if existing is None:
+            new_acc = {
+                "account_id": account_id,
+                "account_type": "personal",
+                "provider": key,
+                "login_url": login_url,
+                "success_selector": "",
+                "credentials_ref": "",
+                "priority": len(data["accounts"]) + 1,
+                "max_requests_per_hour": 100,
+                "cooldown_seconds": 300,
+            }
+            strip_inline_credentials(new_acc)
+            data["accounts"].append(new_acc)
+            p.write_text(_y.dump(data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+        # Reload accounts into SessionManager
+        sessions.accounts.clear()
+        sessions.account_sessions.clear()
+        await sessions.load_accounts()
+
+    # Trigger interactive harvest (browser visible, user logs in)
+    session = await sessions.get_session(
+        key,
+        interactive=True,
+        account_id=requested_account_id or None,
+        allow_direct=connection_mode == "direct",
+    )
+    if session is None:
+        return {"ok": False, "error": sessions.last_error or "No secure exit available. Add a working HTTP/SOCKS5 proxy in Egress, set VIAROMA_PROXY, or start Tor on 127.0.0.1:9050. Direct IP is never used.",
+                "setup_required": True,
+                "provider": key,
+                "mode": connection_mode,
+                "account_id": requested_account_id or None}
     return {
         "ok": True,
-        "provider": found.get("name"),
-        "provider_key": found.get("provider_key"),
-        "type": found.get("class_name", "unknown"),
-        "login_url": found.get("login_url"),
-        "needs_credentials": found.get("needs_credentials", []),
+        "provider": key,
+        "provider_label": PROVIDER_META[key].get("label", key),
+        "account_id": session.account_id,
+        "session_id": session.session_id,
+        "state": session.state.value,
+        "cookie_count": len(session.cookies),
+        "has_user_agent": bool(session.user_agent),
         "connected": True,
     }
 
@@ -552,14 +638,22 @@ async def antiwaf_status(request: Request) -> Dict[str, Any]:
 
 @router.post("/antiwaf/test")
 async def antiwaf_test(request: Request) -> Dict[str, Any]:
-    """Teste la pile anti-WAF: profil TLS (JA3/JA4) observe via tls.peet.ws."""
+    """Tests anti-WAF stack: TLS profile (JA3/JA4) observed via tls.peet.ws."""
     body = await _body(request)
     profile = str(body.get("profile") or "chrome120").strip()
     from src.proxy.anti_waf_harvester import get_ja3_profiles, get_spoofer, is_stub_mode
     profiles = get_ja3_profiles()
     if profiles and profile not in profiles:
         raise HTTPException(400, "Profil inconnu: " + profile + ". Dispo: " + str(list(profiles.keys())))
-    spoofer = get_spoofer(profile=profile)
+    pool = _components(request)["egress_pool"]
+    if pool is None:
+        return {"ok": False, "error": "Test bloque : egress pool indisponible (IP directe interdite)."}
+    endpoint = pool._pick_proxy()
+    if endpoint is None:
+        return {"ok": False, "error": "Test bloque : aucun proxy de sortie valide (IP directe interdite)."}
+    if not endpoint.public_ip and not await pool.probe_endpoint(endpoint):
+        return {"ok": False, "error": "Test bloque : le proxy de sortie ne repond pas (IP directe interdite)."}
+    spoofer = get_spoofer(profile=profile, proxy=endpoint.url)
     out: Dict[str, Any] = {"ok": False, "profile": profile, "stub_mode": is_stub_mode(),
                            "active_profile": profile}
     try:
@@ -578,8 +672,8 @@ async def antiwaf_test(request: Request) -> Dict[str, Any]:
         out["http_version"] = data.get("http_version")
         out["ip"] = data.get("ip")
         out["user_agent"] = data.get("user_agent")
-        # diff = le hash JA3 observe ne correspond pas au profil annonce
-        # => l'empreinte reelle du client est bien differente (spoofing actif).
+        # diff = the observed JA3 hash does not correspond to the announcement profile
+        # => the real footprint of the customer is very different (active spoofing).
         expected = (profiles.get(profile) or {}).get("ja3")
         if expected and observed:
             import hashlib
@@ -599,8 +693,8 @@ async def antiwaf_test(request: Request) -> Dict[str, Any]:
 
 @router.post("/antiwaf/harvest")
 async def antiwaf_harvest(request: Request) -> Dict[str, Any]:
-    """Connexion 'une fois': harvest de session (cookies) pour un provider.
-    Ne renvoie JAMAIS la valeur des cookies, seulement leur nombre."""
+    """Connection 'once': session harvest (cookies) for a provider.
+    NEVER returns the value of cookies, only their number."""
     body = await _body(request)
     provider = str(body.get("provider") or body.get("provider_key") or "").strip()
     sessions = _components(request)["sessions"]
@@ -621,23 +715,14 @@ async def antiwaf_harvest(request: Request) -> Dict[str, Any]:
     if key:
         accounts = [a for a in accounts if a.provider == key]
     if not accounts:
-        return {"ok": False, "error": "Aucun compte configure (voir accounts.yaml)"}
+        return {"ok": False, "error": "No accounts configured (see accounts.yaml)"}
 
-    # Zero saisie manuelle: on prend le 1er compte dont les credentials resolvent.
-    account = None
-    resolved: Dict[str, Any] = {}
-    for acc in accounts:
-        creds = await sessions._resolve_credentials(acc.credentials_ref)
-        if creds:
-            account, resolved = acc, creds
-            break
-    if account is None:
-        return {"ok": False, "error": "Credentials non resolus (attendu env:VAR ou file:chemin) "
-                + ", ".join(a.credentials_ref for a in accounts)}
-
-    session = await sessions.get_session(account.provider)
+    # One-click mode is interactive by default: the user logs in in the
+    # visible browser. Credentials are optional and never need to enter the API.
+    account = accounts[0]
+    session = await sessions.get_session(account.provider, interactive=True)
     if session is None:
-        return {"ok": False, "error": "Harvest echoue (login/challenge non resolu)",
+        return {"ok": False, "error": sessions.last_error or "Harvest fails (login/challenge not resolved)",
                 "provider": account.provider, "account_id": account.account_id}
     return {
         "ok": True,
@@ -654,9 +739,9 @@ async def antiwaf_harvest(request: Request) -> Dict[str, Any]:
 
 @router.post("/antiwaf/rotate")
 async def antiwaf_rotate(request: Request) -> Dict[str, Any]:
-    """Rotation: nouvelle IP de sortie + (optionnel) nouveau profil TLS.
-    Zero saisie: sans account_id on tourne tous les comptes, sans profil on
-    passe au profil TLS suivant dans la liste."""
+    """Rotation: new exit IP + (optional) new TLS profile.
+    Zero entry: without account_id we run all accounts, without profile we
+    moves to the next TLS profile in the list."""
     body = await _body(request)
     account_id = str(body.get("account_id") or "").strip()
     profile = str(body.get("profile") or "").strip()
@@ -684,7 +769,7 @@ async def antiwaf_rotate(request: Request) -> Dict[str, Any]:
         if not targets:
             targets = list(pool.lanes.keys())
     if not targets:
-        return {"ok": False, "error": "Aucun compte a faire tourner"}
+        return {"ok": False, "error": "No account to run"}
 
     rotated = []
     for acc in targets:
@@ -702,12 +787,12 @@ async def antiwaf_rotate(request: Request) -> Dict[str, Any]:
 
 @router.post("/antiwaf/activate")
 async def antiwaf_activate(request: Request) -> Dict[str, Any]:
-    """Active un profil TLS (JA3/JA4) pour un compte et rebind sa lane."""
+    """Activate a TLS profile (JA3/JA4) for an account and rebind its lane."""
     body = await _body(request)
     profile = str(body.get("profile") or "").strip()
     account_id = str(body.get("account_id") or "").strip()
     if not profile:
-        raise HTTPException(400, "profile requis (ex: chrome120)")
+        raise HTTPException(400, "profile required (ex: chrome120)")
     from src.proxy.anti_waf_harvester import get_ja3_profiles
     profiles = get_ja3_profiles()
     if profiles and profile not in profiles:
@@ -732,15 +817,15 @@ async def antiwaf_activate(request: Request) -> Dict[str, Any]:
 
 
 
-# ─── Identités (IP + empreinte navigateur par compte) ───────────
+# ─── Identities (IP + browser fingerprint per account) ───────────
 
 @router.get("/identity/list")
 async def identity_list(request: Request) -> Dict[str, Any]:
-    """Identite complete de chaque compte: IP de sortie + empreinte navigateur.
+    """Complete identity of each account: Exit IP + browser fingerprint.
 
-    Deux comptes ne doivent jamais partager la meme identite: c'est ce qui
-    permet d'avoir plusieurs comptes sans que le service les compte comme un
-    seul (les services type Z.Code limitent a 1-2 comptes par personne)."""
+    Two accounts should never share the same identity: this is what
+    allows you to have several accounts without the service counting them as one
+    alone (Z.Code type services limit to 1-2 accounts per person)."""
     comps = _components(request)
     identities = comps["identities"]
     pool = comps["egress_pool"]
@@ -788,7 +873,7 @@ async def identity_list(request: Request) -> Dict[str, Any]:
 
 @router.get("/identity/status")
 async def identity_status(request: Request) -> Dict[str, Any]:
-    """Synthese de l'identite: combien de comptes, combien d'empreintes distinctes."""
+    """Identity synthesis: how many accounts, how many distinct fingerprints."""
     identities = _components(request)["identities"]
     if identities is None:
         return {"available": False}
@@ -802,8 +887,8 @@ async def identity_status(request: Request) -> Dict[str, Any]:
 
 @router.post("/identity/rotate")
 async def identity_rotate(request: Request) -> Dict[str, Any]:
-    """Rotation d'identite: nouvelle IP + nouvelle empreinte pour un compte.
-    Les cookies de session sont conserves."""
+    """Identity rotation: new IP + new fingerprint for an account.
+    Session cookies are retained."""
     body = await _body(request)
     account_id = str(body.get("account_id") or "").strip()
     reason = str(body.get("reason") or "manual_rotate")
@@ -814,7 +899,7 @@ async def identity_rotate(request: Request) -> Dict[str, Any]:
     if identities is None or pool is None:
         return {"ok": False, "error": "IdentityManager / EgressLanePool indisponible"}
     if not account_id:
-        return {"ok": False, "error": "account_id requis"}
+        return {"ok": False, "error": "account_id required"}
     lane = pool.get_lane(account_id)
     tls_profile = lane.tls_profile if lane else "chrome120"
     prof = identities.rotate(account_id, reason=reason, tls_profile=tls_profile)
@@ -834,7 +919,7 @@ async def identity_rotate(request: Request) -> Dict[str, Any]:
 
 @router.post("/identity/assign")
 async def identity_assign(request: Request) -> Dict[str, Any]:
-    """Cree une identite pour chaque compte qui n'en a pas encore (zero saisie)."""
+    """Creates an identity for each account that does not yet have one (zero entries)."""
     comps = _components(request)
     identities = comps["identities"]
     sessions = comps["sessions"]
@@ -900,7 +985,7 @@ async def egress_add_proxy(request: Request) -> Dict[str, Any]:
     try:
         ep = pool.add_proxy(proxy_url, source="user", kind=proxy_type)
         if ep is None:
-            return {"added": False, "error": "proxy deja present ou URL invalide", "proxy_url": proxy_url}
+            return {"added": False, "error": "proxy already present or invalid URL", "proxy_url": proxy_url}
         return {"added": True, "proxy_url": ep.url, "kind": ep.kind.value,
                 "pool_size": pool.get_stats()["pool_size"]}
     except Exception as e:
@@ -909,8 +994,8 @@ async def egress_add_proxy(request: Request) -> Dict[str, Any]:
 
 @router.post("/egress/scan-worldwide")
 async def egress_scan_worldwide(request: Request) -> Dict[str, Any]:
-    """Declenche le scan mondial temps reel: 20+ sources -> probe -> flag-check LLM -> pool.
-    Seuls les proxies non-flagges par les LLM sont ajoutes au pool.
+    """Triggers real-time global scan: 20+ sources -> probe -> flag-check LLM -> pool.
+    Only proxies not flagged by LLM are added to the pool.
     """
     pool = _components(request)["egress_pool"]
     if pool is None:
@@ -919,8 +1004,8 @@ async def egress_scan_worldwide(request: Request) -> Dict[str, Any]:
     max_proxies = int(body.get("max_proxies", 200)) if body else 200
     flag_check = body.get("flag_check", True) if body else True
     if pool._scan_running:
-        return {"ok": False, "error": "scan deja en cours", "stats": pool.get_scan_stats()}
-    # Lance le scan en arriere-plan (non-bloquant)
+        return {"ok": False, "error": "scan already in progress", "stats": pool.get_scan_stats()}
+    # Starts scanning in the background (non-blocking)
     import asyncio as _aio
     _aio.get_event_loop().create_task(pool.scan_worldwide(max_proxies=max_proxies, flag_check=flag_check))
     return {"ok": True, "message": "scan mondial lance", "stats": pool.get_scan_stats()}
@@ -928,7 +1013,7 @@ async def egress_scan_worldwide(request: Request) -> Dict[str, Any]:
 
 @router.get("/egress/scan-status")
 async def egress_scan_status(request: Request) -> Dict[str, Any]:
-    """Statut du scan mondial en temps reel (progression, resultats)."""
+    """Real-time global scan status (progress, results)."""
     pool = _components(request)["egress_pool"]
     if pool is None:
         return {"ok": False, "error": "egress pool indisponible"}
@@ -937,7 +1022,7 @@ async def egress_scan_status(request: Request) -> Dict[str, Any]:
 
 @router.post("/egress/flag-check")
 async def egress_flag_check(request: Request) -> Dict[str, Any]:
-    """Verifie si un proxy est flagge par les LLM providers (test unique)."""
+    """Checks if a proxy is flagged by LLM providers (single test)."""
     body = await request.json()
     proxy_url = body.get("url", "").strip()
     if not proxy_url:
@@ -963,11 +1048,11 @@ async def credentials_list(request: Request) -> Dict[str, Any]:
     data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
     accounts = []
     for acc in data.get("accounts", []):
-        # Les credentials vivent hors du YAML (data/creds/ ou env:).
+        # Credentials live outside of YAML (data/creds/ or env:).
         stored = read_credentials(acc.get("credentials_ref", ""))
         accounts.append({
             "account_id": acc.get("account_id", "—"),
-            "provider": acc.get("provider", "—"),
+            "provider": stored.get("api_provider") or acc.get("provider", "-"),
             "has_username": bool(stored.get("username") or acc.get("username")),
             "has_password": bool(stored.get("password") or acc.get("password")),
             "has_cookie": bool(stored.get("cookie") or stored.get("cookies") or acc.get("credentials_ref")),
@@ -982,10 +1067,10 @@ async def credentials_list(request: Request) -> Dict[str, Any]:
 async def credentials_update(request: Request, account_id: str) -> Dict[str, Any]:
     """Update username/password for an account.
 
-    Les valeurs ne sont JAMAIS ecrites dans config/accounts.yaml (fichier
-    versionne par git): elles vont dans data/creds/ (gitignore) et le YAML ne
-    porte que la credentials_ref. Si des secrets etaient deja en clair dans le
-    YAML, ils sont migres vers data/creds/ puis effaces du YAML.
+    Values ​​are NEVER written to config/accounts.yaml (file
+    versioned by git): they go in data/creds/ (gitignore) and the YAML does not
+    carries only the credentials_ref. If secrets were already in the clear in the
+    YAML, they are migrated to data/creds/ then deleted from the YAML.
     """
     from src.dashboard.config_io import (config_path, backup, store_credentials,
                                          strip_inline_credentials)
@@ -1003,7 +1088,7 @@ async def credentials_update(request: Request, account_id: str) -> Dict[str, Any
     saved = False
     for acc in data.get("accounts", []):
         if acc.get("account_id") == account_id:
-            # Migration: un secret deja en clair dans le YAML est recupere.
+            # Migration: a secret already in the clear in the YAML is recovered.
             legacy = {k: acc.get(k) for k in ("username", "password") if acc.get(k)}
             values = {k: v for k, v in (("username", username), ("password", password)) if v}
             if legacy:
@@ -1030,8 +1115,8 @@ async def credentials_update(request: Request, account_id: str) -> Dict[str, Any
 async def credentials_add(request: Request) -> Dict[str, Any]:
     """Add a new account to accounts.yaml — all fields set via GUI.
 
-    Comme pour la mise a jour: le secret va dans data/creds/ (gitignore),
-    jamais dans accounts.yaml (versionne).
+    As for the update: the secret goes in data/creds/ (gitignore),
+    never in accounts.yaml (versioned).
     """
     from src.dashboard.config_io import (config_path, backup, store_credentials,
                                          strip_inline_credentials)
@@ -1098,16 +1183,69 @@ async def credentials_delete(request: Request, account_id: str) -> Dict[str, Any
     return {"deleted": True, "account_id": account_id}
 
 
+@router.post("/api-accounts/add")
+async def api_account_add(request: Request) -> Dict[str, Any]:
+    """WIP: store an official API account without exposing its key.
+
+    The key is kept in data/creds/ and the account is marked as pending until
+    its provider adapter is wired into the routing registry.
+    """
+    import re
+    import yaml as _y
+    from src.dashboard.config_io import config_path, backup, store_credentials, strip_inline_credentials
+
+    body = await request.json()
+    account_id = str(body.get("account_id") or "").strip()
+    provider = str(body.get("provider") or "").strip()
+    api_key = str(body.get("api_key") or "").strip()
+    endpoint = str(body.get("endpoint") or "").strip()
+    model = str(body.get("model") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", account_id):
+        raise HTTPException(400, "Invalid account_id")
+    if not provider or not api_key:
+        raise HTTPException(400, "provider and api_key required")
+    p = config_path("accounts.yaml")
+    backup("accounts.yaml") if p.exists() else None
+    data = _y.safe_load(p.read_text(encoding="utf-8")) if p.exists() else {"accounts": []}
+    data = data or {"accounts": []}
+    data.setdefault("accounts", [])
+    if any(a.get("account_id") == account_id for a in data["accounts"]):
+        raise HTTPException(409, f"Account '{account_id}' already exists")
+    values = {"api_key": api_key, "api_provider": provider}
+    if endpoint:
+        values["endpoint"] = endpoint
+    if model:
+        values["model"] = model
+    ref = store_credentials(account_id, values)
+    account = {
+        "account_id": account_id,
+        "account_type": "personal",
+        "provider": "official_api",
+        "login_url": "",
+        "success_selector": "",
+        "credentials_ref": ref,
+        "priority": len(data["accounts"]) + 1,
+        "max_requests_per_hour": 100,
+        "cooldown_seconds": 300,
+        "mode": "official_api",
+    }
+    strip_inline_credentials(account)
+    data["accounts"].append(account)
+    p.write_text(_y.dump(data, default_flow_style=False, allow_unicode=True), encoding="utf-8")
+    return {"ok": True, "wip": True, "account_id": account_id, "provider": provider,
+            "credentials_ref": ref, "secret_exposed": False}
+
+
 @router.post("/cascade/reset")
 async def cascade_reset(request: Request, payload: Dict[str, Any] = Body(default={})) -> Dict[str, Any]:
-    """Reset des circuit breakers.
+    """Reset circuit breakers.
 
-    Sans `provider`: tous les breakers sont rearmes.
-    Avec `provider`: un seul, designe par son label ("Claude (web)"), par sa
-    cle technique ("claude_web") ou par son account_id ("claude-perso").
+    Without `provider`: all breakers are reset.
+    With `provider`: only one, designated by its label ("Claude (web)"), by its
+    technical key ("claude_web") or by its account_id ("claude-perso").
 
-    Une cible inconnue renvoie une ERREUR explicite. Un clic muet (ok:true
-    avec reset:0) est pire qu'un clic rate: on ne sait plus si l'action a
+    An unknown target returns an explicit ERROR. A mute click (ok:true
+    with reset:0) is worse than a click miss: we no longer know if the action has
     eu lieu.
     """
     cascade = _components(request)["cascade"]
@@ -1122,7 +1260,7 @@ async def cascade_reset(request: Request, payload: Dict[str, Any] = Body(default
     only = str(payload.get("provider") or "").strip()
 
     if only:
-        # Index label / cle / account_id -> nom de metrique.
+        # Index label / key / account_id -> metric name.
         index: Dict[str, str] = {}
         for label, prov in (getattr(cascade, "_providers", {}) or {}).items():
             index.setdefault(str(label).lower(), label)
@@ -1164,11 +1302,11 @@ async def cascade_reset(request: Request, payload: Dict[str, Any] = Body(default
 
 @router.post("/hunter/scan")
 async def hunter_scan(request: Request) -> Dict[str, Any]:
-    """Declenche un scan immediat de TOUTES les sources.
+    """Triggers an immediate scan of ALL sources.
 
-    Le scan n'est pas un simple "rafraichir la liste": il fusionne les
-    resultats dans le catalogue, ce qui ENRICHIIT les modeles deja connus
-    (fenetre de contexte reelle, fichiers GGUF, origine du labo) et
+    The scan is not a simple "refresh the list": it merges the
+    results in the catalog, which ENRICHES the already known models
+    (real context window, GGUF files, lab origin) and
     persiste sur disque.
     """
     hunter = _components(request)["hunter"]
@@ -1188,10 +1326,10 @@ async def hunter_scan(request: Request) -> Dict[str, Any]:
             hunter.discovered_endpoints = [m.model_id for m in found]
             print(f"[hunter] scan: {len(found)} trouves, {added} ajoutes")
         except Exception as e:
-            print(f"[hunter] scan echoue: {e}")
+            print(f"[hunter] scan failed: {e}")
 
     _aio.get_event_loop().create_task(_do_scan())
-    return {"ok": True, "message": "scan lance (toutes sources)"}
+    return {"ok": True, "message": "scan launches (all sources)"}
 
 
 @router.get("/providers/list")
@@ -1322,16 +1460,16 @@ async def config_structured_save(name: str, payload: Dict[str, Any] = Body(defau
 
 
 # ══════════════════════════════════════════════════════════════════════
-# SECURITE — etat des garanties. Aucun secret, aucune IP reelle.
+# SECURITY — state of guarantees. No secrets, no real IP.
 # ══════════════════════════════════════════════════════════════════════
 
 @router.get("/security/summary")
 async def security_summary(request: Request) -> Dict[str, Any]:
-    """Etat des garanties de securite du routeur.
+    """Status of router security guarantees.
 
-    Ne renvoie JAMAIS l'IP reelle de la machine, ni une valeur de credential,
-    ni un cookie. Seulement l'etat: qui a une IP de sortie, qui est ecarte,
-    et pourquoi.
+    NEVER returns the real IP of the machine, nor a credential value,
+    nor a cookie. Only the state: which has an exit IP, which is discarded,
+    and why.
     """
     from src.providers.providers import build_providers
     comps = _components(request)
@@ -1370,10 +1508,10 @@ async def security_summary(request: Request) -> Dict[str, Any]:
         "skipped": skipped,
         "lanes": lanes,
         "guarantees": [
-            "Aucun provider n'est appele sans proxy de sortie (fail-closed).",
-            "L'IP de la machine n'est jamais transmise: tout part par la lane du compte.",
-            "Les credentials ne quittent jamais la machine: ils sont lus au moment de la requete.",
-            "Aucune valeur de cookie n'est renvoyee par l'API.",
+            "No provider is called without an exit proxy (fail-closed).",
+            "The IP of the machine is never transmitted: everything goes through the account lane.",
+            "The credentials never leave the machine: they are read at the time of the request.",
+            "No cookie values ​​are returned by the API.",
         ],
     }
 

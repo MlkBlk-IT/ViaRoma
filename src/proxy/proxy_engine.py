@@ -20,9 +20,9 @@ from src.proxy.anti_waf_harvester import TLSSpoofer
 
 logger = logging.getLogger(__name__)
 
-# Champs de credential qui ne sont PAS des cookies: ils ne doivent jamais
-# partir dans l'en-tete Cookie. "cookie" contient une CHAINE de cookies
-# (sessionKey=..; __session=..) qui est parsee en amont par providers.py.
+# Credential fields that are NOT cookies: they should never
+# leave in the Cookie header. "cookie" contains a STRING of cookies
+# (sessionKey=..; __session=..) which is parsed upstream by providers.py.
 NON_COOKIE_FIELDS = {
     "cookie", "org_id", "access_token", "device_id", "token", "api_key",
     "auth_token", "username", "password", "email",
@@ -37,10 +37,10 @@ class ProviderAdapter(ABC):
     def __init__(self, session_id, cookies=None, creds=None, user_agent="", proxy=None,
                  tls_profile="chrome120", locale=""):
         self.session_id = session_id
-        # cookies = jar (nom -> valeur) -> en-tete Cookie.
-        # creds  = tout (jar + jetons + meta) -> Authorization / URL / device id.
-        # Un credential n'est JAMAIS un cookie: "cookie" est une chaine de cookies
-        # (parsee en amont), les jetons vont en header Authorization.
+        # cookies = jar (name -> value) -> Cookie header.
+        # creds = all (jar + tokens + meta) -> Authorization / URL / device id.
+        # A credential is NEVER a cookie: "cookie" is a string of cookies
+        # (parsed upstream), the tokens go to the Authorization header.
         self.cookies = cookies or {}
         self.creds = creds if creds is not None else self.cookies
         self.user_agent = user_agent
@@ -163,8 +163,8 @@ class GeminiWebAdapter(ProviderAdapter):
     @property
     def chat_path(self): return "/_/BardChatUi/data/assistant.lamda.bard.BardFrontendService/StreamGenerate"
     def _extra_headers(self):
-        # L'auth_token est exige par PROVIDER_META mais n'etait jamais envoye:
-        # sans lui Gemini repond 401 quel que soit le credential fourni.
+        # The auth_token is required by PROVIDER_META but was never sent:
+        # without it Gemini responds 401 regardless of the credential provided.
         h = {"X-Same-Domain": "1"}
         token = self.creds.get("auth_token", "") or self.cookies.get("auth_token", "")
         if token:
@@ -190,7 +190,7 @@ class ChatGPTWebAdapter(ProviderAdapter):
     def _extra_headers(self):
         h = {"Authorization": "Bearer " + (self.creds.get("access_token", "")
                                            or self.cookies.get("access_token", ""))}
-        # device_id est exige par PROVIDER_META mais n'etait jamais envoye.
+        # device_id is required by PROVIDER_META but was never sent.
         device_id = self.creds.get("device_id", "") or self.cookies.get("device_id", "")
         if device_id:
             h["oai-device-id"] = device_id
@@ -362,6 +362,35 @@ class OpenAIPassthroughAdapter(ProviderAdapter):
             payload["max_tokens"] = request.max_tokens
         return payload
 
+
+class OfficialAPIAdapter(ProviderAdapter):
+    """Official API account using an OpenAI-compatible chat endpoint.
+
+    The endpoint and key are supplied through the local credential reference;
+    the key is sent only as an Authorization header and never logged.
+    """
+    @property
+    def provider_name(self): return self.creds.get("api_provider", "Official API")
+    @property
+    def base_url(self):
+        endpoint = (self.creds.get("endpoint") or "").rstrip("/")
+        return endpoint.rsplit("/chat/completions", 1)[0]
+    @property
+    def chat_path(self): return "/chat/completions"
+    def _extra_headers(self):
+        key = self.creds.get("api_key", "")
+        return {"Authorization": "Bearer " + key} if key else {}
+    def build_request_payload(self, request):
+        payload = {
+            "model": request.model or self.creds.get("model", "default"),
+            "messages": _msgs(request),
+            "stream": True,
+            "temperature": request.temperature,
+        }
+        if request.max_tokens:
+            payload["max_tokens"] = request.max_tokens
+        return payload
+
 ADAPTER_REGISTRY = {
     "claude_web": ClaudeWebAdapter,
     "gemini_web": GeminiWebAdapter,
@@ -379,6 +408,7 @@ ADAPTER_REGISTRY = {
     "you_web": YouWebAdapter,
     "lepton_web": LeptonWebAdapter,
     "openai_passthrough": OpenAIPassthroughAdapter,
+    "official_api": OfficialAPIAdapter,
 }
 
 PROVIDER_META = {
@@ -397,6 +427,7 @@ PROVIDER_META = {
     "huggingchat_web":  {"label": "HuggingChat (web)","login_url": "https://huggingface.co/chat",      "credentials": ["cookie"]},
     "you_web":          {"label": "You.com (web)",    "login_url": "https://you.com",                   "credentials": ["cookie"]},
     "lepton_web":       {"label": "Lepton (web)",     "login_url": "https://www.lepton.ai",             "credentials": ["api_key"]},
+    "official_api":     {"label": "Official API",      "login_url": "",                                  "credentials": ["api_key", "endpoint", "api_provider"], "transport": "api"},
 }
 
 def get_adapter(provider, session_id, cookies=None, creds=None, user_agent="", proxy=None,

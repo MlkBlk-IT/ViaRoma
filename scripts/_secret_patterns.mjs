@@ -1,12 +1,12 @@
-// Signatures de secrets partagees par le garde-fou de publication (prepack)
-// et par le scan du depot (scan_secrets).
+// Secret signatures shared by the release guardrail (prepack)
+// and by scanning the repository (scan_secrets).
 //
-// Regle: un motif ne doit matcher que des formes de credentials REELLES.
-// Un faux positif dans la CI fait ignorer la regle, donc on reste strict.
+// Rule: a pattern must only match REAL credential forms.
+// A false positive in the CI causes the rule to be ignored, so we remain strict.
 
-// Chaque entree: { name, re, exclude? }
-// exclude: liste de chemins (relatifs a la racine) ou l'une occurrence est
-// un faux positif connu et documente.
+// Each entry: { name, re, exclude? }
+// exclude: list of paths (relative to the root) where one occurrence is
+// a known and documented false positive.
 export const SECRET_PATTERNS = [
   { name: "GitHub token", re: /ghp_[A-Za-z0-9]{20,}/ },
   { name: "GitHub PAT", re: /github_pat_[A-Za-z0-9_]{20,}/ },
@@ -21,12 +21,12 @@ export const SECRET_PATTERNS = [
   { name: "Private key", re: /-----BEGIN (RSA |EC |OPENSSH |PGP |DSA )?PRIVATE KEY-----/ },
   {
     name: "Secret assigne en dur",
-    // "api_key": "valeur_longue_ou_courte" / password = '...'
+    // "api_key": "long_or_short_value" / password = '...'
     re: /(?:api[_-]?key|secret[_-]?key|access[_-]?token|auth[_-]?token|password|passwd|pwd)["']?\s*[:=]\s*["'][A-Za-z0-9_\-]{16,}["']/i,
   },
 ];
 
-// Fichiers qui ne doivent jamais contenir de credentials.
+// Files that should never contain credentials.
 export const SECRET_EXTENSIONS = new Set([
   ".py",
   ".js",
@@ -48,7 +48,7 @@ export const SECRET_EXTENSIONS = new Set([
   ".css",
 ]);
 
-// Dossiers ignores par le scan (dependances, etat local, git).
+// Folders ignored by the scan (dependencies, local state, git).
 export const SKIP_DIRS = new Set([
   ".git",
   ".venv",
@@ -63,14 +63,14 @@ export const SKIP_DIRS = new Set([
   "htmlcov",
 ]);
 
-// Fichiers exclus du scan, avec la raison: ce fichier contient les motifs
-// eux-memes, il matche donc ses propres expressions.
+// Files excluded from scanning, with reason: this file contains patterns
+// themselves, he therefore matches his own expressions.
 export const SCAN_EXCLUDE_FILES = new Set(["scripts/_secret_patterns.mjs"]);
 
 // ──────────────────────────────────────────────────────────────────────────
-// YAML: un secret en clair sous une cle sensible.
-// C'est la forme qui passe au travers des expressions: `password: xxx` SANS
-// guillemets. Les references env:/file: et les placeholders sont legitimes.
+// YAML: a secret in plain text under a sensitive key.
+// It is the form that passes through the expressions: `password: xxx` WITHOUT
+// quotation marks. The env:/file: references and placeholders are legitimate.
 // ──────────────────────────────────────────────────────────────────────────
 export const YAML_SECRET_KEYS = new Set([
   "password",
@@ -101,11 +101,11 @@ export const YAML_PLACEHOLDERS = new Set([
   "x",
 ]);
 
-// Retourne la liste des secrets en clair trouves dans un texte YAML.
+// Returns the list of plaintext secrets found in a YAML text.
 export function scanYamlSecrets(rel, text) {
   const found = [];
   text.split("\n").forEach((line, i) => {
-    // Une cle peut etre en tete d'item de liste YAML: "- password: xxx".
+    // A key can be at the head of a YAML list item: "- password: xxx".
     const m = line.match(/^\s*(?:-\s+)?([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
     if (!m) return;
     const key = m[1].toLowerCase();
@@ -118,7 +118,7 @@ export function scanYamlSecrets(rel, text) {
     const low = value.toLowerCase();
     if (low.startsWith("env:") || low.startsWith("file:")) return;
     if (YAML_PLACEHOLDERS.has(low)) return;
-    found.push(rel + ":" + (i + 1) + "  (cle " + key + " en clair)");
+    found.push(rel + ":" + (i + 1) + " (key " + key + " plain)");
   });
   return found;
 }

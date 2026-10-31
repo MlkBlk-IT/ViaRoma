@@ -11,67 +11,69 @@
 
 </div>
 
-> # ⚠️⚠️⚠️ CE N'EST PAS PRÊT. NE L'UTILISEZ PAS. ⚠️⚠️⚠️
+> # ⚠️ THIS IS NOT READY. DO NOT USE IT IN PRODUCTION. ⚠️
 >
-> # ⛔ NE PAS UTILISER ⛔
+> **The project is unfinished and not reliable yet.** It is published here **so the work is
+> visible and open to criticism**, not to be used.
 >
-> **Ce projet n'est pas terminé et n'est pas fiable en production.**
-> Il est publié ici **pour que le travail soit visible et critiquable**, pas pour être utilisé.
+> What is **not** demonstrated:
 >
-> Ce qui n'est **pas** démontré :
+> - ❌ **No end-to-end completion.** Only one adapter (`claude_web`) was validated against its
+>   front end. The other 14 have a `chat_path`, an `sse_kind` and a correct payload, but
+>   **never answered**. Do not assume they work.
+> - ❌ **The anti-WAF bypass has never worked against a real site.** The browser flow has never
+>   been exercised on a live target.
+> - ❌ **No credentials are provided.** Without `data/creds/<account>.json` (which you create
+>   yourself) `chat` returns a clean 503. That is intended: the secret never touches this
+>   repository.
+> - ❌ **Web front ends only.** `PROVIDER_META` covers 15 web providers; no desktop or CLI front end.
+> - ❌ **CI proves offline code only.** It proves nothing about network behaviour.
 >
-> - ❌ **Aucune complétion réelle.** Un seul adapter (`claude_web`) a été validé contre son
->   front. Les 14 autres ont une `chat_path` / `sse_kind` / un payload corrects, mais
->   **n'ont jamais répondu**. N'en déduisez pas qu'ils marchent.
-> - ❌ **Le contournement anti-WAF n'a jamais tourné contre un vrai site.** Camoufox n'a
->   jamais été exercé sur un site réel.
-> - ❌ **Les credentials ne sont pas fournis.** Sans `data/creds/<compte>.json` (que vous
->   devez créer vous-même), `chat` renvoie un 503 propre. C'est voulu : le secret ne
->   touche jamais ce dépôt.
-> - ❌ **Le `PROVIDER_META` ne couvre que les fronts web.** Aucun support desktop/CLI.
-> - ❌ **La CI ne prouve pas le comportement réseau**, seulement le code hors-ligne.
+> **A blocking bug was found on 2026-10-31** and is **not fixed yet**:
+> `src/sessions/session_manager.py` uses a `logger` that was never defined, so every account
+> connection raises `NameError` instead of returning the clean fail-closed message. See
+> [`PROGRESS.md`](PROGRESS.md) → *Open bugs*.
 >
-> **Ce qui est solide et vérifié** : le fail-closed (aucun provider n'est appelé sans
-> proxy de sortie — 5 niveaux de preuve automatisés), la cascade et le circuit breaker,
-> le dashboard (chaque clic = une action réelle), le catalogue (métriques réelles
-> uniquement, provenance tracée), le garde-fou anti-fuite de secrets.
+> **What is solid and verified**: fail-closed (no provider is called without an exit proxy —
+> 5 automated levels of proof), the cascade and the circuit breaker, the dashboard (every click
+> is a real API call), the catalog (real metrics only, provenance traced), and the guarantee
+> that no secret leaks.
 >
-> Vous forkez, vous lisez, vous critiquez — **mais vous ne l'utilisez pas sur de vraies
-> données, et vous ne branchez pas de vrai compte dessus** tant que ces points ne sont
-> pas levés. L'état détaillé, module par module, est dans [`PROGRESS.md`](PROGRESS.md).
+> You may fork it, read it and criticize it — but **do not plug a real account into it** until
+> these points are lifted. The detailed status, module by module and bug by bug, is in
+> [`PROGRESS.md`](PROGRESS.md).
 
-> ## 🚧 ALPHA — pas de release — développement actif 🚧
+> ## 🚧 ALPHA — no release — active development 🚧
 >
-> Le HTTP et le MCP répondent, la cascade est câblée, le pool egress tourne, le dashboard
-> s'affiche. **Ce qui n'est pas démontré : une complétion réelle.** Voir
-> [`PROGRESS.md`](PROGRESS.md) pour l'état honnête, module par module.
+> HTTP and MCP answer, the cascade is wired, the egress pool runs, the dashboard renders.
+> **What is not demonstrated: an actual completion.** See [`PROGRESS.md`](PROGRESS.md).
 
-> ## 🔒 Licence propriétaire — tous droits réservés
+> ## 🔒 Proprietary license — all rights reserved
 >
-> Ce dépôt n'est **pas** sous licence libre. Usage personnel sur votre propre machine,
-> redistribution / fork public / usage commercial interdits sans accord écrit.
-> Voir [`LICENSE`](LICENSE). Le modèle de sécurité et la procédure de signalement
-> de failles sont dans [`SECURITY.md`](SECURITY.md).
+> This repository is **not** under a free license. Personal use on your own machine is
+> permitted; redistribution, public forks and commercial use are prohibited without written
+> consent. See [`LICENSE`](LICENSE). The security model and the flaw-reporting procedure are
+> in [`SECURITY.md`](SECURITY.md).
 
 ---
 
 ## 🏛️ What is ViaRoma?
 
 <div align="center">
-<img src="docs/poster.png" width="100%" alt="ViaRoma en un coup d'œil : le trajet d'une requête, l'état réel mesuré, le catalogue sans valeur inventée, ce qui est vérifié et ce qui ne l'est pas" />
+<img src="docs/poster.png" width="100%" alt="ViaRoma at a glance: the path of a request, the measured state, the catalog with no invented values, what is verified and what is not" />
 </div>
 
-**ViaRoma** — *via Romana*, "all roads lead to Rome". Un point d'entrée unique qui donne
-accès à des **modèles frontier gratuits** : une API OpenAI-compatible et un **serveur MCP**,
-branchables sur n'importe quel agent.
+**ViaRoma** — *via Romana*, "all roads lead to Rome". A single entry point giving access to
+**free frontier models**: an OpenAI-compatible HTTP API and an **MCP server**, pluggable into
+any agent.
 
-L'architecture repose sur trois idées inhabituelles pour un proxy :
+The architecture rests on three unusual ideas for a proxy:
 
 | Idea | Implementation |
 |---|---|
-| **L'IP de sortie est jetable** | `EgressLanePool` tient un pool de SOCKS5/HTTP/Tor, les sonde, met en quarantaine les morts. |
-| **Une session appartient à un compte, pas à une IP** | Chaque `account_id` est lié 1:1 à une **lane** persistante (proxy + profil TLS). Lane brûlée → lane remplacée, le cookie jar reste. |
-| **L'échec est un signal de routage** | Un `CircuitBreaker` par provider classe `429` / `403` / challenge, ouvre le circuit, et **brûle la lane** avant de basculer. |
+| **The exit IP is a consumable resource** | `EgressLanePool` keeps a pool of SOCKS5/HTTP/Tor endpoints, probes them, quarantines the dead ones. |
+| **A session belongs to an account, not to an IP** | Each `account_id` is bound 1:1 to a persistent **lane** (proxy + TLS profile). Burned lane → new lane, cookie jar kept. |
+| **Failure is a routing signal** | A `CircuitBreaker` per provider classifies `429` / `403` / challenge, opens the circuit and **burns the lane** before switching. |
 
 ```text
 agent (Hermes, Claude Code, …)
@@ -80,12 +82,12 @@ agent (Hermes, Claude Code, …)
    │                                    │
    └── HTTP ───────▶ src/main.py ────────┤
                                         ▼
-                     CascadeManager ──▶ CircuitBreaker (par provider)
+                     CascadeManager ──▶ CircuitBreaker (per provider)
                                         │   ├── 429 rate limit ──▶ burn lane
-                                        │   ├── 403 permission ──▶ burn lane
+                                        │   ├── 403 permission ─▶ burn lane
                                         │   └── challenge ───────▶ burn lane
                                         ▼
-                     ProxyLayer ──▶ ProviderAdapter (16 providers)
+                     ProxyLayer ──▶ ProviderAdapter (16 adapters)
                                         │
                                         ▼
                      TLSSpoofer (curl_cffi JA3/JA4) ──▶ SSE ──▶ ChatChunk
@@ -97,62 +99,60 @@ agent (Hermes, Claude Code, …)
 <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white&labelColor=0d0d0d" />
 <img src="https://img.shields.io/badge/MCP-00ff9c?style=for-the-badge&labelColor=0d0d0d" />
 <img src="https://img.shields.io/badge/curl__cffi-00ff9c?style=for-the-badge&labelColor=0d0d0d" />
-<img src="https://img.shields.io/badge/Camoufox-e10600?style=for-the-badge&labelColor=0d0d0d" />
+<img src="https://img.shields.io/badge/Playwright%20%2B%20Chrome-e10600?style=for-the-badge&labelColor=0d0d0d" />
 <br/>
 <img src="https://img.shields.io/badge/SOCKS5%20%2F%20HTTP%20%2F%20Tor-00ff9c?style=for-the-badge&labelColor=0d0d0d" />
 <img src="https://img.shields.io/badge/OpenAI--compatible%20API-e10600?style=for-the-badge&labelColor=0d0d0d" />
-<img src="https://img.shields.io/badge/16_providers-00ff9c?style=for-the-badge&labelColor=0d0d0d" />
+<img src="https://img.shields.io/badge/16_adapters-00ff9c?style=for-the-badge&labelColor=0d0d0d" />
 <img src="https://img.shields.io/badge/100%25%20CPU%20%C2%B7%200%20GPU%20%C2%B7%200%20paid%20API-e10600?style=for-the-badge&labelColor=0d0d0d" />
 
 </div>
 
 ---
 
-## 📐 Modules — `find src -name '*.py' -o -name '*.js'`
+## 📐 Modules
 
-**18 modules · 5 829 lignes · Python 3.12**
-
-| Module | Lignes | Rôle |
-|---|---:|---|
-| [`src/main.py`](src/main.py) | 140 | App FastAPI, hooks startup/shutdown, `/v1/chat/completions` (stream + non-stream), `/v1/egress/stats`, dashboard monté. |
-| [`src/mcp_server.py`](src/mcp_server.py) | 275 | **Serveur MCP** (stdio / sse / streamable-http) : 5 outils, même noyau que l'API. |
-| [`src/core/cascade.py`](src/core/cascade.py) | 264 | `CircuitBreaker` (CLOSED/OPEN/HALF_OPEN, métriques par provider, backoff exponentiel) + `CascadeManager`. Charge `config/cascade.yaml`. |
-| [`src/proxy/egress_lanes.py`](src/proxy/egress_lanes.py) | 661 | `EgressLanePool` — IP egress jetables, lanes 1:1 par `account_id`, health loop, quarantaine, `burn_lane()`, `add_proxy()`, `rebind()`. |
-| [`src/proxy/identity.py`](src/proxy/identity.py) | 312 | `IdentityManager` — une **machine complète par compte** : IP + empreinte TLS + empreinte navigateur (UA, locale, fuseau, écran, WebGL, canvas). Stable et distincte. |
-| [`src/proxy/anti_waf_harvester.py`](src/proxy/anti_waf_harvester.py) | 446 | Pile anti-WAF hybride : Camoufox headless pour passer Turnstile/Cloudflare, puis curl_cffi avec spoof JA3/JA4 complet ; repli aiohttp. |
-| [`src/proxy/proxy_engine.py`](src/proxy/proxy_engine.py) | 352 | `ProviderAdapter` × 16 (15 web + passthrough OpenAI), `TLSSpoofer`, `PROVIDER_META`, `ADAPTER_REGISTRY`. |
-| [`src/proxy/sse_converter.py`](src/proxy/sse_converter.py) | 271 | Normalisation SSE native → `ChatChunk` pour 3 dialectes : OpenAI, Claude, Gemini. |
-| [`src/sessions/session_manager.py`](src/sessions/session_manager.py) | 254 | Rotation multi-comptes, isolation des cookie jars, binding de lane par compte, cooldown / rate-limit / challenge, persistance JSON. |
-| [`src/hunter/hunter.py`](src/hunter/hunter.py) | 342 | `FreeHunter` — découverte de modèles frontier gratuits (OpenRouter, HuggingFace, apps desktop), filtre de tier, catalogue persistant. |
-| [`src/dashboard/routes.py`](src/dashboard/routes.py) | 885 | 43 endpoints : stats, actions, édition de config, credentials, egress, anti-WAF. |
-| [`src/dashboard/config_io.py`](src/dashboard/config_io.py) | 118 | Lecture/écriture des 5 fichiers de config, squelettes par défaut **sans donnée sensible**, backups. |
-| [`src/config_loader.py`](src/config_loader.py) | 61 | Charge `accounts.yaml` et résout `credentials_ref` (`env:` \| `file:`). |
-| [`src/providers/providers.py`](src/providers/providers.py) | 80 | `BaseProvider` + registre des web chats, scoring de santé, délégation aux vrais adaptateurs. |
-| [`src/schemas.py`](src/schemas.py) | 24 | Modèles Pydantic : `ChatMessage`, `ChatCompletionRequest`, `ChatChunk`. |
-| [`src/dashboard/static/app.js`](src/dashboard/static/app.js) | 697 | Pilotage : 10 onglets, actions, refresh 2 s, charts. |
-| [`src/dashboard/static/charts.js`](src/dashboard/static/charts.js) | 254 | Canvas 2D sans lib, thème **Roma Aeterna** : couronne de laurier, colonnes romaines, aqueduc. |
-| [`src/dashboard/static/colosseum.js`](src/dashboard/static/colosseum.js) | 194 | Colisée 3D en canvas, sans dépendance. |
-| [`src/dashboard/static/style.css`](src/dashboard/static/style.css) | — | Thème « Roma Aeterna » : or, ivoire, verre, colonnes. |
-| [`src/dashboard/static/index.html`](src/dashboard/static/index.html) | — | Squelette du dashboard, cache-busting `?v=`. |
+| Module | Role |
+|---|---|
+| [`src/main.py`](src/main.py) | FastAPI app, startup/shutdown hooks, `/v1/chat/completions` (stream + non-stream), `/v1/egress/stats`, dashboard mounted. |
+| [`src/mcp_server.py`](src/mcp_server.py) | **MCP server** (stdio / sse / streamable-http): 5 tools, same core as the HTTP API. |
+| [`src/core/cascade.py`](src/core/cascade.py) | `CircuitBreaker` (CLOSED/OPEN/HALF_OPEN, per-provider metrics, exponential backoff) + `CascadeManager`. Loads `config/cascade.yaml`. |
+| [`src/proxy/egress_lanes.py`](src/proxy/egress_lanes.py) | `EgressLanePool` — disposable exit IPs, lanes bound 1:1 per `account_id`, health loop, quarantine, `burn_lane()`, `add_proxy()`, `rebind()`. |
+| [`src/proxy/identity.py`](src/proxy/identity.py) | `IdentityManager` — one **complete machine per account**: IP + TLS fingerprint + browser fingerprint (UA, locale, timezone, screen, WebGL, canvas). Stable and distinct. |
+| [`src/proxy/anti_waf_harvester.py`](src/proxy/anti_waf_harvester.py) | Hybrid anti-WAF stack: Playwright + installed Chrome for login and challenge pages, then curl_cffi with full JA3/JA4 spoofing; aiohttp fallback. |
+| [`src/proxy/proxy_engine.py`](src/proxy/proxy_engine.py) | `ProviderAdapter` × 16 (15 web + an OpenAI passthrough), `TLSSpoofer`, `PROVIDER_META`, `ADAPTER_REGISTRY`. |
+| [`src/proxy/sse_converter.py`](src/proxy/sse_converter.py) | Normalises native SSE → `ChatChunk` for 3 dialects: OpenAI, Claude, Gemini. |
+| [`src/sessions/session_manager.py`](src/sessions/session_manager.py) | Multi-account rotation, cookie-jar isolation, lane binding per account, cooldown / rate-limit / challenge states, JSON persistence. |
+| [`src/hunter/hunter.py`](src/hunter/hunter.py) | `FreeHunter` — discovery of free frontier models (OpenRouter, HuggingFace, desktop apps), tier filter, persistent catalog. |
+| [`src/dashboard/routes.py`](src/dashboard/routes.py) | **47 endpoints**: stats, actions, config editing, credentials, egress, anti-WAF. |
+| [`src/dashboard/config_io.py`](src/dashboard/config_io.py) | Reads/writes the config files, default skeletons **without sensitive data**, backups. |
+| [`src/config_loader.py`](src/config_loader.py) | Loads `accounts.yaml` and resolves `credentials_ref` (`env:` \| `file:`). |
+| [`src/providers/providers.py`](src/providers/providers.py) | `BaseProvider` + web chat registry, health scoring, delegation to the real adapters. |
+| [`src/schemas.py`](src/schemas.py) | Pydantic models: `ChatMessage`, `ChatCompletionRequest`, `ChatChunk`. |
+| [`src/dashboard/static/app.js`](src/dashboard/static/app.js) | Dashboard control layer: 17 tabs, actions, 2 s refresh, charts. |
+| [`src/dashboard/static/charts.js`](src/dashboard/static/charts.js) | 2D canvas charts with no library, **Roma Aeterna** theme: laurel wreath, Roman columns, aqueduct. |
+| [`src/dashboard/static/colosseum3d.js`](src/dashboard/static/colosseum3d.js) | Real WebGL Colosseum (three.js + GLB), procedural fallback. |
+| [`src/dashboard/static/architecture.js`](src/dashboard/static/architecture.js) | Live architecture graph driven by server data. |
+| [`src/dashboard/static/index.html`](src/dashboard/static/index.html) | Dashboard skeleton, cache-busting `?v=`. |
 
 ---
 
-## 🔌 Le serveur MCP
+## 🔌 The MCP server
 
-C'est la porte d'entrée pour les agents. Cinq outils, pas un de plus :
+This is the gateway for agents. Five tools, not one more:
 
-| Outil | Ce qu'il fait |
+| Tool | What it does |
 |---|---|
-| `chat` | Envoie un message, la cascade route en interne, retourne le texte. L'agent ne choisit jamais le provider. |
-| `connect_provider` | Connecte un compte **une fois** (harvest de session via Camoufox). Ne renvoie jamais la valeur des credentials. |
-| `list_providers` | La matrice des providers + l'état de connexion de chaque session. |
-| `list_free_models` | Le catalogue des modèles gratuits, filtré par tier. |
-| `session_status` | Santé live : providers, sessions, lanes, IPs, burns, cooldowns. |
+| `chat` | Sends a message; the cascade routes internally and returns the text. The agent never chooses the provider. |
+| `connect_provider` | Connects an account **once** (session harvest via Playwright/Chrome). Never returns credential values. |
+| `list_providers` | The provider matrix plus the connection state of every session. |
+| `list_free_models` | The catalog of free models, filtered by tier. |
+| `session_status` | Live health: providers, sessions, lanes, IPs, burns, cooldowns. |
 
-### Brancher un agent
+### Connect an agent
 
 ```jsonc
-// claude_desktop_config.json / mcp.json — transport stdio
+// claude_desktop_config.json / mcp.json — stdio transport
 {
   "mcpServers": {
     "via-roma": {
@@ -163,97 +163,97 @@ C'est la porte d'entrée pour les agents. Cinq outils, pas un de plus :
 ```
 
 ```bash
-# ou en HTTP, pour un agent déjà habitué au streamable-http
+# or over HTTP, for an agent that expects streamable-http
 via-roma-mcp --transport streamable-http --port 8001
 ```
 
-Les logs du serveur partent sur **stderr** : stdout est réservé au protocole.
+Server logs go to **stderr**: stdout is reserved for the protocol.
 
 ---
 
-## 🛣️ Egress Lanes — le cœur du design
+## 🛣️ Egress lanes — the heart of the design
 
-L'IP de sortie est une **ressource consommable**, pas un réglage. C'est cette décision qui
-rend la rotation de comptes et la survie aux rate-limits par IP traitables.
+The exit IP is a **consumable resource**, not a setting. That decision is what makes account
+rotation and IP rate-limit survival tractable.
 
 ```text
                     EgressLanePool
         ┌───────────────────────────────────────────┐
-        │  pool: SOCKS5 · HTTP · Tor · listes       │
-        │         probe_endpoint() → santé           │
+        │  pool: SOCKS5 · HTTP · Tor · lists        │
+        │  probe_endpoint() → health                │
         └───────────────────┬───────────────────────┘
                             │ bind(account_id)
                             ▼
-        account:perso   ──▶ [ lane-A · proxy · profil TLS ]
-        account:ecole   ──▶ [ lane-B · proxy · profil TLS ]
+        account:perso   ──▶ [ lane-A · proxy · TLS profile ]
+        account:school  ──▶ [ lane-B · proxy · TLS profile ]
                             │
                             │ burn_lane(account_id, "429 rate_limit")
                             ▼
-        lane remplacée depuis le pool — cookie jar intact
+        lane replaced from the pool — cookie jar intact
 ```
 
-* **Lane persistante** — un compte garde la même identité de sortie d'une requête à l'autre.
-* **`burn_lane()`** — sur `403` / `429` / challenge, le circuit breaker rappelle
-  `SessionManager.burn_lane()`, qui remplace la lane et garde les cookies.
-* **Health loop** — toutes les 120 s, chaque lane est sondée (IP publique, latence, pays/ASN)
-  puis mise en quarantaine si morte. État persisté dans `data/egress_lanes.json`.
-* **Les credentials restent hors du code** — les comptes résolvent leurs secrets via
-  `credentials_ref: env:NAME | file:path`. Aucune clé n'est en dur, rien n'est versionné.
+* **Persistent lane** — an account keeps the same exit identity from one request to the next.
+* **`burn_lane()`** — on `403` / `429` / challenge, the circuit breaker recalls
+  `SessionManager.burn_lane()`, which replaces the lane and keeps the cookies.
+* **Health loop** — every 120 s each lane is polled (public IP, latency, country/ASN) and
+  quarantined if dead. State persisted in `data/egress_lanes.json`.
+* **Credentials stay out of the code** — accounts resolve their secrets through
+  `credentials_ref: env:NAME | file:path`. No key is hardcoded, nothing is versioned.
 
 ---
 
-## 🧬 Identités — une machine par compte
+## 🧬 Identities — one machine per account
 
-Les services free-tier limitent souvent une personne à **1 ou 2 comptes**. ViaRoma répond
-en donnant à chaque compte une **identité de machine complète** :
+Free-tier services often limit a person to **1 or 2 accounts**. ViaRoma answers by giving each
+account a **full machine identity**:
 
-| Couche | Ce qui varie par compte |
+| Layer | What varies per account |
 |---|---|
-| **Réseau** | L'IP de sortie (lane), unique et disposable. |
-| **TLS** | Le profil JA3/JA4 (`chrome120`, `chrome119`, `firefox133`, `safari17`). |
-| **Navigateur** | User-Agent, `sec-ch-ua`, plateforme, locale, fuseau horaire, résolution d'écran, viewport, `deviceMemory`, `hardwareConcurrency`, WebGL vendor/renderer, graine de bruit canvas. |
+| **Network** | The exit IP (lane), unique and disposable. |
+| **TLS** | The JA3/JA4 profile (`chrome120`, `chrome119`, `firefox133`, `safari17`). |
+| **Browser** | User-Agent, `sec-ch-ua`, platform, locale, timezone, screen resolution, viewport, `deviceMemory`, `hardwareConcurrency`, WebGL vendor/renderer, canvas noise seed. |
 
-Deux invariants, tenus par `IdentityManager` :
+Two invariants, enforced by `IdentityManager`:
 
-* **Stable** — un compte garde la même identité d'un bout à l'autre. Changer d'empreinte en
-  cours de session, c'est se faire bannir.
-* **Distincte** — deux comptes ne partagent jamais la même empreinte. Le service voit une
-  personne par identité, pas dix comptes.
+* **Stable** — an account keeps the same identity throughout. Changing the fingerprint during
+  a session is how accounts get banned.
+* **Distinct** — two accounts never share the same fingerprint. The service must see one
+  person with one identity, not ten accounts.
 
-L'identité est **dérivée d'un seed** = `hash(account_id + salt d'install + rotation)`. Donc
-reproductible sans stocker 30 champs, unique par compte, et rotable : un nouveau seed donne
-une nouvelle identité cohérente.
+The identity is **derived from a seed** = `hash(account_id + install salt + rotation)`: it is
+reproducible without storing 30 fields, unique per account, and rotatable — a new seed yields a
+new coherent identity.
 
-**Le couplage est la clé** : `burn_lane()` fait tourner l'IP **et** l'empreinte **ensemble**.
-Une nouvelle IP avec la même empreinte, c'est un compte qui « saute de machine ».
+**Coupling is the key**: `burn_lane()` rotates the IP **and** the fingerprint **together**. A new
+IP with the same fingerprint is an account that "jumps machine".
 
-L'onglet **🧬 Identities** du dashboard affiche l'état par compte et la rotation.
+The **🧬 Identities** tab of the dashboard shows the status per account and per rotation.
 
 ---
 
 ## ⚡ Quick start
 
 ```bash
-# Python 3.12 est requis — curl_cffi n'a pas de wheel _cffi_backend en 3.14+
+# Python 3.12 is required — curl_cffi has no _cffi_backend wheel on 3.14+
 py -3.12 -m venv .venv
 .venv/Scripts/pip install -r requirements.txt
 
-# API HTTP + dashboard, depuis la racine du dépôt
+# HTTP API + dashboard, from the repository root
 .venv/Scripts/python -m src.main
 
-# serveur MCP (stdio) pour un agent
+# MCP server (stdio) for an agent
 .venv/Scripts/python -m src.mcp_server
 ```
 
-Les modèles 3D du Colisée (32 Mo) ne sont pas dans le dépôt. Une seule fois :
+The 3D models of the Colosseum (~31 MB) are **not** in the repository. Fetch them once:
 
 ```bash
 .venv/Scripts/python scripts/fetch_3d_assets.py
 ```
 
-Sans eux, le dashboard bascule sur un Colisée procédural — il fonctionne quand même.
+Without them the dashboard falls back to a procedural Colosseum — it still works.
 
-L'API écoute sur **port 8000** (surchargeable : `VIAROMA_PORT`) :
+The API listens on **port 8000** (override with `VIAROMA_PORT`):
 
 ```bash
 curl http://127.0.0.1:8000/v1/chat/completions \
@@ -263,20 +263,26 @@ curl http://127.0.0.1:8000/v1/chat/completions \
 curl http://127.0.0.1:8000/v1/egress/stats
 ```
 
-Le dashboard est sur **http://127.0.0.1:8000/dashboard/** — 16 onglets, thème Roma Aeterna.
+The dashboard is at **http://127.0.0.1:8000/dashboard/** — 17 tabs, Roma Aeterna theme.
 
-Tout client OpenAI-compatible marche : pointe son `base_url` sur `http://127.0.0.1:8000/v1`.
+Any OpenAI-compatible client works: point its `base_url` at `http://127.0.0.1:8000/v1`.
 
-### 📦 Installation en paquet
+> **Before the first request works**, three local files must agree on the same account id:
+> a row in `config/accounts.yaml`, a credential file in `data/creds/<account_id>.json`, and an
+> exit lane in `data/egress_lanes.json`. Without an exit lane the account is excluded by
+> design (fail-closed). The exact current state of this machine is documented in
+> [`PROGRESS.md`](PROGRESS.md).
 
-Le dépôt est empaqueté pour npm et PyPI. Les deux chemins sont **préparés et
-testés en CI** ; la publication elle-même demande un compte/token.
+### 📦 Installation packages
+
+The repository is packaged for npm and PyPI. Both paths are **prepared and checked in CI**;
+publishing requires an account and a token.
 
 ```bash
-# npm : le paquet installe les lanceurs (ils trouveront Python 3.12 seul)
+# npm — the package installs the launchers (they look for Python 3.12 only)
 npm install -g via-roma
-via-roma-mcp      # serveur MCP (stdio)
-via-roma          # API HTTP + dashboard
+via-roma-mcp      # MCP server (stdio)
+via-roma          # HTTP API + dashboard
 
 # PyPI
 pip install via-roma
@@ -284,179 +290,130 @@ via-roma-mcp
 via-roma
 ```
 
-`config/` (comptes, cascade, pool egress) est livré avec le paquet ; `data/`
-(identités, lanes, catalogue, sessions) est créé au premier lancement.
+`config/` is generated with safe skeletons at first launch; `data/` (identities, lanes, catalog,
+sessions, credentials) is local state and is never versioned.
 
-Pour stocker's l'état ailleurs que dans le dossier du paquet :
+To store the state somewhere else than the package folder:
 
 ```bash
-export VIAROMA_HOME=/chemin/vers/etat      # config/ + data/ y seront
+export VIAROMA_HOME=/path/to/state
 ```
 
-Si Python 3.12 n'est pas trouvé, le lanceur s'arrête avec le message exact à
-suivre (`VIAROMA_PYTHON` ou `pip install -r requirements.txt`) — il ne
-devine pas et ne fait pas semblant.
+If Python 3.12 cannot be found, the launcher exits with an explicit message
+(`VIAROMA_PYTHON`, or install `requirements.txt`). It never guesses.
 
 ### Requirements
 
-| Package | Rôle |
+| Package | Role |
 |---|---|
-| `fastapi`, `uvicorn` | Surface HTTP et serveur ASGI |
-| `mcp` | Serveur MCP (stdio / sse / streamable-http) |
-| `pydantic` | Schémas requête/réponse |
-| `curl_cffi` | Impersonation TLS (JA3/JA4) — **Python 3.12 uniquement** |
-| `aiohttp` | Transport de repli quand curl_cffi est indisponible |
-| `camoufox` | Navigateur headless pour passer les challenges WAF |
-| `redis` | État partagé optionnel |
+| `fastapi`, `uvicorn` | HTTP surface and ASGI server |
+| `mcp` | MCP server (stdio / sse / streamable-http) |
+| `pydantic` | Request/response schemas |
+| `curl_cffi` | TLS impersonation (JA3/JA4) — **Python 3.12 only** |
+| `aiohttp` | Fallback transport when curl_cffi is unavailable |
+| `playwright` | Browser automation with installed Chrome for login and challenge pages |
+| `pyyaml` | Config files (`config/*.yaml`) |
 
 ---
 
----
+## 🛡️ Security — the real IP never goes out, credentials never leak
 
-## 🛡️ Sécurité — l'IP réelle ne sort jamais, les credentials ne fuient pas
+This is a **structural guarantee**, not an option. It lives in the core and is verified by
+`tests/test_security_context.py` and `tests/test_ip_leak.py`.
 
-C'est une **garantie structurelle**, pas une option. Elle est appliquée dans le noyau et
-vérifiée par `tests/test_security_context.py`.
-
-| Garantie | Comment elle est tenue | Testé |
+| Guarantee | How it is held | Tested |
 |---|---|---|
-| **L'IP de la machine n'est jamais transmise** | Aucun provider n'est exécuté sans proxy de sortie : `build_providers()` **écarte** le compte (`fail-closed`) au lieu de le lancer en direct. Le proxy vient de la **lane du compte**, jamais d'un réglage global. | ✅ |
-| **L'IP réelle n'est jamais affichée** | L'API ne renvoie que l'IP de sortie (`lane.proxy.public_ip`). L'IP locale n'est ni lue, ni loguée, ni exposée par `/api/dashboard/security/summary`. | ✅ |
-| **Les credentials ne quittent jamais la machine** | Résolution à la volée (`env:VAR` / `file:chemin`) au moment de la requête. Aucune valeur n'est journalisée, retournée par l'API, ni stockée dans le dépôt. | ✅ |
-| **Aucun cookie n'est renvoyé** | Les endpoints de session renvoient un **nombre** de cookies, jamais leurs valeurs. | ✅ |
-| **Les jetons ne voyagent pas en cookie** | Le champ `cookie` est une *chaîne* de cookies : elle est cassée en jar. Les jetons (`access_token`, `token`, `api_key`, `auth_token`) sortent en header `Authorization` ; les méta (`org_id`, `device_id`) dans l'URL ou un header dédié. | ✅ |
-| **Le dashboard n'écoute que sur la boucle locale** | `VIAROMA_HOST` vaut `127.0.0.1` par défaut. Le dashboard expose l'état de routage : il n'a rien à faire sur le LAN. | — |
-| **Le dépôt ne contient aucun secret** | `data/` est gitignoré ; les comptes ne pointent que vers des références. | ✅ |
+| **The machine IP is never transmitted** | No provider runs without an exit proxy: `build_providers()` **discards** the account (fail-closed) instead of letting it live. The proxy comes from the **account lane**, never from a global setting. | ✅ |
+| **The real IP is never displayed** | The API only returns the exit IP (`lane.proxy.public_ip`). The local IP is neither read, logged nor exposed by `/api/dashboard/security/summary`. | ✅ |
+| **Credentials never leave the machine** | Resolved on the fly (`env:VAR` / `file:path`) at request time. Values are never logged, never returned by the API, never stored in the repository. | ✅ |
+| **No cookies are returned** | Session endpoints return a **count** of cookies, never their values. | ✅ |
+| **Tokens do not travel in cookies** | The `cookie` field is a *string* of cookies: it is split into a jar. Tokens (`access_token`, `token`, `api_key`, `auth_token`) leave in the `Authorization` header; metadata (`org_id`, `device_id`) goes into the URL or a dedicated header. | ✅ |
+| **The dashboard only listens on the loopback** | `VIAROMA_HOST` defaults to `127.0.0.1`. The dashboard shows routing state; it has nothing to do on the LAN. | — |
+| **The repository contains no secrets** | `data/` is gitignored; accounts only point to references. The CI runs a secret scanner on every commit. | ✅ |
 
-Le dashboard expose l'état de ces garanties en direct (onglet **Overview → Garanties actives**),
-avec la liste des comptes écartés et la raison.
+The dashboard shows these guarantees live (**Overview → Active guarantees**), with the list of
+excluded accounts and the reason for each.
 
-### Le routage part d'un contexte unique par compte
+### Routing starts from a unique context per account
 
-C'est le point qui rend les garanties tenables. Une requête ne se construit plus à partir de
-réglages dispersés, mais d'un **contexte** qui porte l'identité complète du compte :
+This is the point that makes the guarantees hold. A request is no longer assembled from
+scattered settings but from a **context** carrying the complete identity of the account:
 
 ```text
-contexte(account_id)
-  ├── proxy       ← lane egress du compte      (obligatoire, sinon fail-closed)
-  ├── tls_profile ← profil JA3/JA4 de l'identité du compte
-  ├── user_agent  ← UA récolté par le navigateur (sinon celui de l'identité)
-  ├── locale      ← locale de l'identité (Accept-Language suit)
-  └── creds       ← jar de cookies récolté + credentials résolus
+context(account_id)
+  ├── proxy      ← lane exit of the account (required, otherwise fail-closed)
+  ├── tls_profile ← account identity JA3/JA4 profile
+  ├── user_agent  ← UA collected by the browser (otherwise the identity's)
+  ├── locale      ← identity locale (Accept-Language follows)
+  └── creds       ← harvested cookie jar + resolved credentials
 ```
 
-Envoyer une requête depuis une autre IP que celle du navigateur, ou avec un autre profil TLS
-que celui de l'identité, c'est exactement ce qui fait bannir un compte. Ici, les cinq éléments
-viennent de la **même** source.
+Sending a request from another IP than the browser's, or with another TLS profile than the
+identity's, is exactly how an account gets banned. Here the five elements come from the
+**same** source.
 
 ---
 
-## 🎨 Le dashboard « Roma Aeterna »
+## 🎨 The "Roma Aeterna" dashboard
 
-* **Le Colisée en WebGL (vrai 3D)** — Three.js + un **modèle GLB réel** du Colisée
-  (reconstruction de l'Anfiteatro Flavio, 80 d.C. et état actuel) : ombres portées,
-  bloom, torches qui vacillent, poussière en suspension, caméra panoramique lente,
-  glissement à la souris et zoom à la molette. Repli automatique sur un Colisée
-  procédural si le GLB ou WebGL sont indisponibles.
-  Les modèles sont trop volumineux pour le dépôt : `python scripts/fetch_3d_assets.py`.
-  three.js est **vendu local** (`vendor/three/`) — aucun CDN à l'exécution.
-  Attribution : [Colosseum.how](https://www.colosseum.how/it/modello-3d) — voir `CREDITS.md`.
-* **Side panel complet groupé** — Pilotage / Observabilité / Architecture / Playground /
-  Configuration / Opérations. Chaque entrée ouvre un onglet réel, jamais un log vide.
-* **Overview en tuiles** — Centre de commandement (chaîne de routage réelle, cliquable),
-  Trafic & catalogue, Requêtes live (journal réel) et Garde-fous (fail-closed).
-* **Graphe d'architecture live** — le graphe d'orchestration de ViaRoma en SVG, alimenté
-  par les données du serveur : superviseur, adaptateurs, egress, mémoire partagée,
-  registre d'outils, synthèse. Chaque nœud ouvre sa fiche et ses actions.
-* **Onglet Live** — sorties et annonces **scrapées en direct** (Hugging Face papiers du
-  jour et modèles créés récemment, r/LocalLLaMA, Hacker News, blogs OpenAI et Google AI),
-  plus les dépôts GGUF avec leurs **vrais fichiers de quantification** (nom, taille, URL).
-* **Intro « rue romaine → Colisée »** — au démarrage, la caméra descend une rue de paving
-  stones entre des colonnes et des arcs, torches allumées, et débouche devant le Colisée.
-  Sautable (clic / Échap), et désactivée si `prefers-reduced-motion` est actif.
-* **Animation d'IP spoofing** — l'identité entre dans un arc romain, s'y scramble, et en ressort
-  transformée. L'IP réelle y est **masquée par construction** : elle n'est jamais écrite.
-* **Animations d'interface** — entrée du Colisée, apparition des cartes, compteurs qui bondissent,
-  reflet sur les boutons, halo pulsé sur les pastilles d'état.
+* **The Colosseum in WebGL (real 3D)** — three.js plus a **real GLB model** of the Colosseum
+  (reconstruction of the 80 A.D. amphitheatre and of the current state): cast shadows, bloom,
+  flickering torches, suspended dust, slow camera pan, mouse drag and wheel zoom. Automatic
+  fallback to a procedural Colosseum when the GLB or WebGL are unavailable.
+  The models are too large for the repository: `python scripts/fetch_3d_assets.py`.
+  three.js is **shipped locally** (`vendor/three/`) — no CDN at runtime.
+  Attribution: [Colosseum.how](https://www.colosseum.how/it/modello-3d) — see `CREDITS.md`.
+* **Complete grouped side panel** — Control / Observability / Architecture / Playground /
+  Configuration / Operations. Each entry opens a real tab, never an empty log.
+* **Tiled overview** — command center (the real routing chain, clickable), traffic and catalog,
+  live queries and safeguards (fail-closed).
+* **Live architecture graph** — ViaRoma's orchestration graph in SVG, driven by server data:
+  supervisor, adapters, egress, shared memory, tool registry, synthesis. Each node opens its
+  file and its actions.
+* **Live tab** — releases and announcements **scraped live** (Hugging Face papers from updated
+  and recently created models, r/LocalLLaMA, Hacker News, OpenAI and Google AI blogs), plus the
+  GGUF repositories with their **real quantized files** (name, size, URL).
+* **Intro "Roman street → Colosseum"** — on start the camera descends a paved street between
+  columns and arches, lit by torches, and emerges in front of the Colosseum. Skippable
+  (click / Escape) and disabled when `prefers-reduced-motion` is active.
+* **IP spoofing animation** — the identity enters a Roman arch, is scrambled there, and comes
+  out transformed. The real IP is **hidden by construction**: it is never written.
+* **Interface animations** — entrance to the Colosseum, card appearance, counting numbers,
+  button reflection, pulsing halo on the status pads.
 
-### 🔎 Le catalogue : des métriques réelles, pas des valeurs inventées
+### 🔎 The catalog: real metrics, never invented values
 
-Le Free Hunter scrape les API publiques **au runtime**. Le point important :
-**aucune fenêtre de contexte n'est devinée**.
-
-* Quand la source publie la valeur, elle est reprise telle quelle et la source est
-  tracée (`ctx_source`) : Hugging Face (métadonnées GGUF), OpenRouter, NVIDIA.
-  Les valeurs sont réellement différentes (262 144, 1 000 000, 128 000, 40 960…).
-* Quand la source ne la publie pas, le catalogue affiche **« non publiée par la source »**
-  — il n'y a plus de `32768` appliqué en dur à tout le catalogue.
-* **Origine du laboratoire** : chaque modèle est taggé (Chine, Europe, États-Unis,
-  Canada, Israël, Corée, E.A.U.) et filtrable — les labos chinois et européens ne
-  sont plus relégués.
-* **Modes de téléchargement GGUF** : pour les dépôts GGUF, la liste réelle des
-  fichiers de quantification (`Q4_K_M`, `Q5_K_M`, `Q8_0`, `F16`…) avec leur **taille
-  en octets** et l'URL de téléchargement.
-* **Applications locales détectées** : LM Studio, Cherry Studio, Jan, Unsloth, Ollama,
-  GPT4All, KoboldCpp, Open WebUI… cherchées dans les vrais dossiers d'installation
-  Windows (`%LOCALAPPDATA%\Programs`), pas seulement dans le `PATH`.
+Free Hunter scrapes public APIs **at runtime**. The important point: **no context window is
+guessed**. When the source publishes the value it is taken as is and the source is traced;
+otherwise the entry is flagged as "not published by source" rather than filled with a plausible
+number.
 
 ---
 
-## 🎯 Scope & ethics
+## 🧪 Tests
 
-ViaRoma est un **projet de recherche personnel** sur l'accès free-tier et l'identité de sortie
-— comprendre comment un client peut garder une identité de session cohérente quand le chemin
-réseau en dessous change (et l'inverse).
+```powershell
+cd <repo>; $env:PYTHONIOENCODING='utf-8'
+foreach ($t in 'test_burn_chain','test_identity','test_mcp_server','test_security_context','test_ip_leak') {
+  & '.\.venv\Scripts\python.exe' "tests\$t.py"
+}
+node scripts\scan_secrets.mjs
+```
 
-* Ce n'est **ni** un harvester de credentials, **ni** un service de scraping, **ni** un produit
-  de contournement.
-* Aucun cookie, token ou clé n'est livré. Les secrets restent chez l'utilisateur.
-* Le code anti-WAF existe pour comprendre les mécaniques de challenge et garder une session
-  vivante.
-* Chaque usage reste la responsabilité de l'opérateur, aux conditions des services concernés.
-
----
-
-## 📜 Licence
-
-**Propriétaire — tous droits réservés.** © 2026 MlkBlk-IT.
-
-Ce dépôt n'est **pas** sous licence libre. Ce qui est permis : lire, exécuter et
-faire tourner ViaRoma sur votre propre machine, pour votre usage personnel.
-
-Ce qui est interdit sans accord écrit préalable : redistribuer le code (fork,
-copie, archive, paquet npm / PyPI), publier une version dérivée, vendre ou
-sous-licencier le logiciel, ou masquer les mentions de copyright.
-
-Le texte fait foi : [`LICENSE`](LICENSE). L'auteur se réserve le droit de retirer
-le code, notamment en cas de fuite de credentials ou d'usage détourné.
-
-> **Pourquoi pas une licence libre ?** MIT ou Apache donneraient à n'importe qui le
-> droit de redistribuer, forker et commercialiser le projet — c'est-à-dire de
-> reprendre la conception telle quelle. La valeur de ViaRoma est dans le
-> fonctionnement du routage et des identités : elle se protège en gardant le code
-> fermé. Si vous voulez utiliser ViaRoma commercialement ou le redistribuer,
-> demandez.
-
-Le modèle de sécurité, les limites assumées et la procédure de signalement de
-failles sont dans [`SECURITY.md`](SECURITY.md).
+The suites are standalone scripts (a `check()` helper, not pytest): each one prints a
+`[PASS] / [FAIL]` line per assertion and exits non-zero on failure.
 
 ---
 
-## 📊 Status
+## 🔭 Repository status
 
-Ce dépôt est **alpha, auto-documenté**. [`PROGRESS.md`](PROGRESS.md) liste ce qui est vérifié,
-ce qui est.stubé, et la prochaine étape. Alpha means alpha : ce qui n'est pas fini est marqué
-comme tel, jamais caché.
+- Single commit `6f617e1`; the English pass and the 2026-10-31 diagnostic live in the working
+  tree, uncommitted by request.
+- Proprietary license, all rights reserved — [`LICENSE`](LICENSE).
+- Security model and flaw reporting — [`SECURITY.md`](SECURITY.md).
+- Third-party asset attribution — [`CREDITS.md`](CREDITS.md).
+- `data/` is local state and is never versioned.
 
 <div align="center">
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:00ff9c,50:1a0505,100:e10600&height=100&section=footer" width="100%" />
-
-<sub>
-`mcp` · `openai-compatible` · `free-tier` · `frontier-models` · `fallback-cascade` ·
-`circuit-breaker` · `egress-ip` · `proxy-pool` · `socks5` · `tor` · `tls-fingerprint` ·
-`ja3` · `curl-cffi` · `camoufox` · `anti-waf` · `sse` · `fastapi` · `python312` · `cpu-only` ·
-`self-hosted` · `session-rotation` · `cookie-jar` · `multi-account`
-</sub>
-
+<sub>ViaRoma — <i>via Romana</i>. All roads lead to Rome.</sub>
 </div>
